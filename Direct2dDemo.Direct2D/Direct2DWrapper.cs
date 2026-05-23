@@ -540,148 +540,149 @@ internal sealed class Direct2DWrapper : IDisposable
 
     #region Cache
 
-    ////cacahe 没啥用处，耗时也不明显，先注释掉。
-    //private Dictionary<Color, ID2D1SolidColorBrush> _solidColorBrushCacahe = new();
-    //private readonly Dictionary<(string FontFamily, float FontSize), IDWriteTextFormat> _textFormatCache = new();
-    //private readonly Dictionary<PolygonElement, ID2D1PathGeometry> _pathGeometryCache = new();
+    //各10_000 有cache 时，372ms  ,无cache时，441ms
+    //耗时差距不太明显
+    private Dictionary<Color, ID2D1SolidColorBrush> _solidColorBrushCacahe = new();
+    private readonly Dictionary<(string FontFamily, float FontSize), IDWriteTextFormat> _textFormatCache = new();
+    private readonly Dictionary<PolygonElement, ID2D1PathGeometry> _pathGeometryCache = new();
 
-    //public ID2D1PathGeometry GetOrCreatePathGeometry(PolygonElement element)
-    //{
-    //    //not good to use PolygonElement as key directly, but for demo purpose it's fine.
-    //    //if (_pathGeometryCache.TryGetValue(element, out var cached))
-    //    //    return cached;
+    public ID2D1PathGeometry GetOrCreatePathGeometry(PolygonElement element)
+    {
+        //not good to use PolygonElement as key directly, but for demo purpose it's fine.
+        if (_pathGeometryCache.TryGetValue(element, out var cached))
+            return cached;
 
-    //    if (_d2dFactory is null)
-    //        throw new InvalidOperationException("Direct2D factory is not created.");
+        if (_d2dFactory is null)
+            throw new InvalidOperationException("Direct2D factory is not created.");
 
-    //    var geometry = _d2dFactory.CreatePathGeometry();
+        var geometry = _d2dFactory.CreatePathGeometry();
 
-    //    ID2D1GeometrySink? sink = null;
+        ID2D1GeometrySink? sink = null;
 
-    //    try
-    //    {
-    //        sink = geometry.Open();
+        try
+        {
+            sink = geometry.Open();
 
-    //        sink.SetFillMode(D2D1_FILL_MODE.D2D1_FILL_MODE_WINDING);
+            sink.SetFillMode(D2D1_FILL_MODE.D2D1_FILL_MODE_WINDING);
 
-    //        sink.BeginFigure(
-    //            element.Points[0],
-    //            D2D1_FIGURE_BEGIN.D2D1_FIGURE_BEGIN_FILLED);
+            sink.BeginFigure(
+                element.Points[0],
+                D2D1_FIGURE_BEGIN.D2D1_FIGURE_BEGIN_FILLED);
 
-    //        for (var i = 1; i < element.Points.Count; i++)
-    //        {
-    //            sink.AddLine(element.Points[i]);
-    //        }
+            for (var i = 1; i < element.Points.Count; i++)
+            {
+                sink.AddLine(element.Points[i]);
+            }
 
-    //        sink.EndFigure(D2D1_FIGURE_END.D2D1_FIGURE_END_CLOSED);
+            sink.EndFigure(D2D1_FIGURE_END.D2D1_FIGURE_END_CLOSED);
 
-    //        sink.Close().ThrowIfFailed();
+            sink.Close().ThrowIfFailed();
 
-    //        _pathGeometryCache[element] = geometry;
-    //        return geometry;
-    //    }
-    //    catch
-    //    {
-    //        SafeRelease(ref geometry);
-    //        throw;
-    //    }
-    //    finally
-    //    {
-    //        SafeRelease(ref sink);
-    //    }
-    //}
+            _pathGeometryCache[element] = geometry;
+            return geometry;
+        }
+        catch
+        {
+            SafeRelease(ref geometry);
+            throw;
+        }
+        finally
+        {
+            SafeRelease(ref sink);
+        }
+    }
 
-    //public IDWriteTextFormat GetOrCreateTextFormat(string fontFamily, float fontSize)
-    //{
-    //    if (DwriteFactory is null)
-    //        throw new InvalidOperationException("DirectWrite factory is not created.");
+    public IDWriteTextFormat GetOrCreateTextFormat(string fontFamily, float fontSize)
+    {
+        if (DwriteFactory is null)
+            throw new InvalidOperationException("DirectWrite factory is not created.");
 
-    //    if (fontSize <= 0)
-    //        throw new ArgumentOutOfRangeException(nameof(fontSize));
+        if (fontSize <= 0)
+            throw new ArgumentOutOfRangeException(nameof(fontSize));
 
-    //    fontFamily = string.IsNullOrWhiteSpace(fontFamily)
-    //        ? "Meiryo"
-    //        : fontFamily.Trim();
+        fontFamily = string.IsNullOrWhiteSpace(fontFamily)
+            ? "Meiryo"
+            : fontFamily.Trim();
 
-    //    var key = (fontFamily, fontSize);
+        var key = (fontFamily, fontSize);
 
-    //    //if (_textFormatCache.TryGetValue(key, out var cached))
-    //    //    return cached;
+        if (_textFormatCache.TryGetValue(key, out var cached))
+            return cached;
 
-    //    var textFormat = DwriteFactory.CreateTextFormat(
-    //        fontFamily,
-    //        null,
-    //        DWRITE_FONT_WEIGHT.DWRITE_FONT_WEIGHT_NORMAL,
-    //        DWRITE_FONT_STYLE.DWRITE_FONT_STYLE_NORMAL,
-    //        DWRITE_FONT_STRETCH.DWRITE_FONT_STRETCH_NORMAL,
-    //        fontSize,
-    //        "ja-JP"
-    //    );
+        var textFormat = DwriteFactory.CreateTextFormat(
+            fontFamily,
+            null,
+            DWRITE_FONT_WEIGHT.DWRITE_FONT_WEIGHT_NORMAL,
+            DWRITE_FONT_STYLE.DWRITE_FONT_STYLE_NORMAL,
+            DWRITE_FONT_STRETCH.DWRITE_FONT_STRETCH_NORMAL,
+            fontSize,
+            "ja-JP"
+        );
 
-    //    textFormat.SetTextAlignment(
-    //        DWRITE_TEXT_ALIGNMENT.DWRITE_TEXT_ALIGNMENT_LEADING
-    //    );
+        textFormat.SetTextAlignment(
+            DWRITE_TEXT_ALIGNMENT.DWRITE_TEXT_ALIGNMENT_LEADING
+        );
 
-    //    textFormat.SetParagraphAlignment(
-    //        DWRITE_PARAGRAPH_ALIGNMENT.DWRITE_PARAGRAPH_ALIGNMENT_NEAR
-    //    );
+        textFormat.SetParagraphAlignment(
+            DWRITE_PARAGRAPH_ALIGNMENT.DWRITE_PARAGRAPH_ALIGNMENT_NEAR
+        );
 
-    //    _textFormatCache[key] = textFormat;
-    //    return textFormat;
-    //}
+        _textFormatCache[key] = textFormat;
+        return textFormat;
+    }
 
-    //public ID2D1SolidColorBrush GetOrCreateSolidColorBrush(Color color)
-    //{
-    //    //if (_solidColorBrushCacahe.TryGetValue(color, out var cache))
-    //    //{
-    //    //    return cache;
-    //    //}
+    public ID2D1SolidColorBrush GetOrCreateSolidColorBrush(Color color)
+    {
+        if (_solidColorBrushCacahe.TryGetValue(color, out var cache))
+        {
+            return cache;
+        }
 
-    //    var context = _d2dContext;
-    //    if (context is null)
-    //        throw new InvalidOperationException("Direct2D device context is not created.");
+        var context = _d2dContext;
+        if (context is null)
+            throw new InvalidOperationException("Direct2D device context is not created.");
 
-    //    var new_brush = context.CreateSolidColorBrush(ToD2DColor(color));
-    //    if (new_brush is null)
-    //        throw new InvalidOperationException("Failed to create solid color brush.");
+        var new_brush = context.CreateSolidColorBrush(ToD2DColor(color));
+        if (new_brush is null)
+            throw new InvalidOperationException("Failed to create solid color brush.");
 
-    //    _solidColorBrushCacahe[color] = new_brush;
+        _solidColorBrushCacahe[color] = new_brush;
 
-    //    return new_brush;
-    //}
+        return new_brush;
+    }
 
-    //private static D2D1_COLOR_F ToD2DColor(Color color)
-    //{
-    //    return new D2D1_COLOR_F
-    //    {
-    //        r = color.R / 255.0f,
-    //        g = color.G / 255.0f,
-    //        b = color.B / 255.0f,
-    //        a = color.A / 255.0f
-    //    };
-    //}
+    private static D2D1_COLOR_F ToD2DColor(Color color)
+    {
+        return new D2D1_COLOR_F
+        {
+            r = color.R / 255.0f,
+            g = color.G / 255.0f,
+            b = color.B / 255.0f,
+            a = color.A / 255.0f
+        };
+    }
 
-    //public void ClearCache()
-    //{
-    //    foreach (var brush in _solidColorBrushCacahe.Values)
-    //    {
-    //        var item = brush;
-    //        SafeRelease(ref item);
-    //    }
-    //    _solidColorBrushCacahe.Clear();
-    //    foreach (var textFormat in _textFormatCache.Values)
-    //    {
-    //        var item = textFormat;
-    //        SafeRelease(ref item);
-    //    }
-    //    _textFormatCache.Clear();
-    //    foreach (var geometry in _pathGeometryCache.Values)
-    //    {
-    //        var item = geometry;
-    //        SafeRelease(ref item);
-    //    }
-    //    _pathGeometryCache.Clear();
-    //}
+    public void ClearCache()
+    {
+        foreach (var brush in _solidColorBrushCacahe.Values)
+        {
+            var item = brush;
+            SafeRelease(ref item);
+        }
+        _solidColorBrushCacahe.Clear();
+        foreach (var textFormat in _textFormatCache.Values)
+        {
+            var item = textFormat;
+            SafeRelease(ref item);
+        }
+        _textFormatCache.Clear();
+        foreach (var geometry in _pathGeometryCache.Values)
+        {
+            var item = geometry;
+            SafeRelease(ref item);
+        }
+        _pathGeometryCache.Clear();
+    }
 
     #endregion Cache
 }

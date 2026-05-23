@@ -11,6 +11,12 @@ internal partial class MainWindowViewModel : ObservableObject, IDisposable
 {
     public MainWindowViewModel()
     {
+        Direct2dContext.Initialized += async (s, e) =>
+        {
+            await AddEllipseAsync();
+            await AddPolygonAsync();
+            await AddTextAsync();
+        };
     }
 
     [ObservableProperty]
@@ -44,7 +50,7 @@ internal partial class MainWindowViewModel : ObservableObject, IDisposable
         Running = true;
         using var _ = DeferAction.Create(() => Running = false);
 
-        Direct2dContext.DrawingElements.Clear();
+        Direct2dContext.ClearData();
         await this.RefreshAsync();
         EllipseCount = 0;
         PolygonCount = 0;
@@ -266,6 +272,20 @@ internal partial class MainWindowViewModel : ObservableObject, IDisposable
         "Привет"
     };
 
+        var fontFamilies = new[]
+        {
+        "Segoe UI",
+        "Arial",
+        "Calibri",
+        "Times New Roman",
+        "Consolas",
+        "Microsoft YaHei",
+        "SimSun",
+        "Meiryo",
+        "Yu Gothic",
+        "Malgun Gothic"
+    };
+
         var elements = await Task.Run(() =>
         {
             var result = new List<IDrawingElement>(addCount);
@@ -273,10 +293,9 @@ internal partial class MainWindowViewModel : ObservableObject, IDisposable
             for (var i = 0; i < addCount; i++)
             {
                 var text = texts[NextInt(0, texts.Length)];
+                var fontFamily = fontFamilies[NextInt(0, fontFamilies.Length)];
                 var fontSize = NextFloat(12.0f, 42.0f);
 
-                // extElement 没有 Width / Height，
-                // 所以这里用粗略估算，尽量避免文字生成到窗口外。
                 var estimatedWidth = EstimateTextWidth(text, fontSize);
                 var estimatedHeight = fontSize * 1.5f;
 
@@ -289,11 +308,7 @@ internal partial class MainWindowViewModel : ObservableObject, IDisposable
                 var textElement = new TextElement
                 {
                     Text = text,
-
-                    // 默认字体。
-                    // 这里也可以继续用 string.Empty。
-                    FontFamily = "Segoe UI",
-
+                    FontFamily = fontFamily,
                     Position = new PointF(x, y),
                     FontSize = fontSize,
                     Color = RandomColor()
