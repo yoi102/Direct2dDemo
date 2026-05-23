@@ -13,9 +13,9 @@ namespace Direct2dDemo.Direct2D;
 
 internal sealed class Direct2DWrapper : IDisposable
 {
-    private ID2D1Factory8? _d2dFactory;
-    private ID2D1Device7? _d2dDevice;
-    private ID2D1DeviceContext7? _d2dContext;
+    private ID2D1Factory1? _d2dFactory;
+    private ID2D1Device? _d2dDevice;
+    private ID2D1DeviceContext? _d2dContext;
 
     private ID3D11Device? _d3dDevice;
     private ID3D11DeviceContext? _d3dContext;
@@ -40,7 +40,7 @@ internal sealed class Direct2DWrapper : IDisposable
     public int Height => _height;
     public IDWriteFactory? DwriteFactory => _dwriteFactory;
 
-    public ID2D1DeviceContext7? Context
+    public ID2D1DeviceContext? Context
     {
         get
         {
@@ -192,7 +192,7 @@ internal sealed class Direct2DWrapper : IDisposable
         _swapChain.Present(1, 0).ThrowIfFailed();
     }
 
-    public void DrawFrame(Action<ID2D1DeviceContext7> drawAction)
+    public void DrawFrame(Action<ID2D1DeviceContext> drawAction)
     {
         if (drawAction == null)
             throw new ArgumentNullException(nameof(drawAction));
@@ -226,7 +226,7 @@ internal sealed class Direct2DWrapper : IDisposable
     [MemberNotNull(nameof(_d2dFactory))]
     private void CreateD2DFactory()
     {
-        _d2dFactory = D2D1CreateFactory<ID2D1Factory8>(
+        _d2dFactory = D2D1CreateFactory<ID2D1Factory1>(
             D2D1_FACTORY_TYPE.D2D1_FACTORY_TYPE_SINGLE_THREADED
         );
     }
@@ -324,19 +324,18 @@ internal sealed class Direct2DWrapper : IDisposable
         if (_dxgiDevice is null)
             throw new InvalidOperationException("DXGI device is not created.");
 
-        _d2dFactory.CreateDevice(_dxgiDevice, out ID2D1Device7 device7);
-        if (device7 is null)
+        _d2dFactory.CreateDevice(_dxgiDevice, out ID2D1Device device);
+        if (device is null)
             throw new InvalidOperationException("Failed to create Direct2D device.");
-        _d2dDevice = device7;
+        _d2dDevice = device;
 
-        _d2dDevice.CreateDeviceContext(
-             D2D1_DEVICE_CONTEXT_OPTIONS.D2D1_DEVICE_CONTEXT_OPTIONS_NONE,
-             out ID2D1DeviceContext7 context7
-         );
-        if (context7 is null)
+        var context = _d2dDevice.CreateDeviceContext(
+               D2D1_DEVICE_CONTEXT_OPTIONS.D2D1_DEVICE_CONTEXT_OPTIONS_NONE
+           );
+        if (context is null)
             throw new InvalidOperationException("Failed to create Direct2D device context.");
 
-        _d2dContext = context7;
+        _d2dContext = context;
     }
 
     private void CreateSwapChain()
