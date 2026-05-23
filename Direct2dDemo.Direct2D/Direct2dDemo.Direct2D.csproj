@@ -1,0 +1,18 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFramework>net10.0-windows</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Vanara.PInvoke.Direct2D" Version="5.0.5" />
+		<PackageReference Include="Vanara.PInvoke.Direct3D11" Version="5.0.5" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\Direct2dDemo.Shared\Direct2dDemo.Shared.csproj" />
+	</ItemGroup>
+
+</Project>
