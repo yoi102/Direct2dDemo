@@ -12,26 +12,34 @@ public partial class HwndHost : System.Windows.Controls.UserControl
     {
         InitializeComponent();
         panelHost.Resize += PanelHost_Resize;
+        panelHost.Paint += PanelHost_Paint;
+    }
+
+    private void PanelHost_Paint(object? sender, PaintEventArgs e)
+    {
+        if (DrawingContext is null)
+            return;
+        DrawingContext.Render();
     }
 
     private void PanelHost_Resize(object? sender, EventArgs e)
     {
-        if (Direct2dContext is null)
+        if (DrawingContext is null)
             return;
-        Direct2dContext.HwndResized(panelHost.ClientSize.Width, panelHost.ClientSize.Height);
+        DrawingContext.HwndResized(panelHost.ClientSize.Width, panelHost.ClientSize.Height);
     }
 
-    public IDirect2dContext Direct2dContext
+    public IDrawingContext DrawingContext
     {
-        get { return (IDirect2dContext)GetValue(Direct2dContextProperty); }
-        set { SetValue(Direct2dContextProperty, value); }
+        get { return (IDrawingContext)GetValue(DrawingContextProperty); }
+        set { SetValue(DrawingContextProperty, value); }
     }
 
-    // Using a DependencyProperty as the backing store for IDirect2dContext.  This enables animation, styling, binding, etc...
-    public static readonly DependencyProperty Direct2dContextProperty =
+    // Using a DependencyProperty as the backing store for IDrawingContext.  This enables animation, styling, binding, etc...
+    public static readonly DependencyProperty DrawingContextProperty =
         DependencyProperty.Register(
-            nameof(Direct2dContext),
-            typeof(IDirect2dContext),
+            nameof(DrawingContext),
+            typeof(IDrawingContext),
             typeof(HwndHost),
             new PropertyMetadata(null, OnDirect2dContextChanged));
 
@@ -40,9 +48,9 @@ public partial class HwndHost : System.Windows.Controls.UserControl
         if (d is not HwndHost hwndHost)
             return;
 
-        if (e.NewValue is not IDirect2dContext direct2DContext)
+        if (e.NewValue is not IDrawingContext drawingContext)
             throw new ArgumentNullException(nameof(e.NewValue));
 
-        direct2DContext.Initialize(hwndHost.panelHost.Handle, hwndHost.panelHost.ClientSize.Width, hwndHost.panelHost.ClientSize.Height);
+        drawingContext.Initialize(hwndHost.panelHost.Handle, hwndHost.panelHost.ClientSize.Width, hwndHost.panelHost.ClientSize.Height);
     }
 }

@@ -9,6 +9,7 @@
 	<ItemGroup>
 		<PackageReference Include="Vanara.PInvoke.Direct2D" Version="5.0.5" />
 		<PackageReference Include="Vanara.PInvoke.Direct3D11" Version="5.0.5" />
+		<PackageReference Include="Vanara.PInvoke.Printing" Version="5.0.5" />
 	</ItemGroup>
 
 	<ItemGroup>

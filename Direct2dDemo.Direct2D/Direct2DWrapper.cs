@@ -5,8 +5,10 @@ using System.Runtime.InteropServices;
 using Vanara.PInvoke;
 using static Vanara.PInvoke.D2d1;
 using static Vanara.PInvoke.D3D11;
+using static Vanara.PInvoke.DocumentTarget;
 using static Vanara.PInvoke.Dwrite;
 using static Vanara.PInvoke.DXGI;
+using static Vanara.PInvoke.WindowsCodecs;
 using D2D1_COLOR_F = Vanara.PInvoke.DXGI.D3DCOLORVALUE;
 
 namespace Direct2dDemo.Direct2D;
@@ -106,8 +108,145 @@ internal sealed class Direct2DWrapper : IDisposable
         CreateRenderTargetBitmap();
 
         EnsureTargetReady();
+
         _d2dContext.SetTarget(_targetBitmap);
     }
+
+    //public void SaveAsPdf(
+    //ID2D1DeviceContext deviceContext,
+    //float pageWidthDip,
+    //float pageHeightDip,
+    //Action<ID2D1DeviceContext> draw)
+    //{
+    //    IPrintDocumentPackageTarget
+    //    this._d2dDevice.CreatePrintControl()
+
+    //    deviceContext.GetTarget(out var oldTarget);
+
+    //    var commandList = deviceContext.CreateCommandList();
+
+    //    deviceContext.SetTarget(commandList);
+
+    //    deviceContext.BeginDraw();
+
+    //    deviceContext.SetTransform(D2D_MATRIX_3X2_F.Identity());
+    //    deviceContext.Clear(new D3DCOLORVALUE(1f, 1f, 1f, 1f));
+
+    //    draw(deviceContext);
+
+    //    deviceContext.EndDraw();
+
+    //    commandList.Close();
+
+    //    deviceContext.SetTarget(oldTarget);
+    //}
+
+    //public void SaveAsPdf(
+    //    ID2D1Device d2D1Device,
+    //ID2D1DeviceContext deviceContext,
+    //IWICImagingFactory wicFactory,
+    //float pageWidthDip,
+    //float pageHeightDip,
+    //float rasterDPI,
+    //string pdfPath,
+    //Action<ID2D1DeviceContext> draw)
+    //{
+    //    const string printerName = "Microsoft Print to PDF";
+    //    const string jobName = "Direct2D Save As PDF";
+
+    //    if (File.Exists(pdfPath))
+    //        File.Delete(pdfPath);
+
+    //    System.Runtime.InteropServices.ComTypes.IStream? outputStream = null;
+    //    IPrintDocumentPackageTarget? packageTarget = null;
+    //    ID2D1PrintControl? printControl = null;
+    //    ID2D1Image? oldTarget = null;
+    //    ID2D1CommandList? commandList = null;
+
+    //    try
+    //    {
+    //        // 1. 创建输出 PDF 文件流
+    //        outputStream = CreateComFileStream(pdfPath);
+
+    //        // 2. 创建 IPrintDocumentPackageTarget
+    //        packageTarget =  CreatePrintDocumentPackageTarget(
+    //            printerName,
+    //            jobName,
+    //            outputStream);
+
+    //        var properties = new D2D1_PRINT_CONTROL_PROPERTIES()
+    //        {
+    //            fontSubset = D2D1_PRINT_FONT_SUBSET_MODE.D2D1_PRINT_FONT_SUBSET_MODE_DEFAULT,
+    //            rasterDPI = rasterDPI,
+    //            colorSpace = D2D1_COLOR_SPACE.D2D1_COLOR_SPACE_SRGB,
+
+    //        };
+    //        printControl = d2D1Device.CreatePrintControl(
+    //            wicFactory,
+    //            packageTarget,
+    //            properties);
+
+    //        // 4. 保存旧 target
+    //        deviceContext.GetTarget(out oldTarget);
+
+    //        // 5. 创建 command list
+    //        commandList = deviceContext.CreateCommandList();
+
+    //        // 6. 把 command list 设置为绘制目标
+    //        deviceContext.SetTarget(commandList);
+
+    //        deviceContext.BeginDraw();
+
+    //        deviceContext.SetTransform(D2D_MATRIX_3X2_F.Identity());
+    //        deviceContext.Clear(new D3DCOLORVALUE(1f, 1f, 1f, 1f));
+
+    //        draw(deviceContext);
+
+    //        deviceContext.EndDraw();
+
+    //        // 7. 关闭 command list
+    //        commandList.Close();
+
+    //        // 8. 恢复旧 target
+    //        deviceContext.SetTarget(oldTarget);
+
+    //        // 9. 添加页面
+    //        var pageSize = new D2D_SIZE_F
+    //        {
+    //            width = pageWidthDip,
+    //            height = pageHeightDip
+    //        };
+
+    //        printControl.AddPage(
+    //            commandList,
+    //            pageSize,
+    //            null,
+    //            out _,
+    //            out _);
+
+    //        // 10. 结束打印任务，真正生成 PDF
+    //        printControl.Close();
+    //    }
+    //    finally
+    //    {
+    //        if (oldTarget != null)
+    //        {
+    //            try
+    //            {
+    //                deviceContext.SetTarget(oldTarget);
+    //            }
+    //            catch
+    //            {
+    //                // 防止恢复 target 时二次异常
+    //            }
+    //        }
+    //        SafeRelease(ref commandList);
+    //        SafeRelease(ref oldTarget);
+    //        SafeRelease(ref printControl);
+    //        SafeRelease(ref packageTarget);
+    //        SafeRelease(ref outputStream);
+    //    }
+    //}
 
     public void TargetResized(int width, int height)
     {
@@ -542,6 +681,7 @@ internal sealed class Direct2DWrapper : IDisposable
     //各10_000 有cache 时，372ms  ,无cache时，441ms
     //耗时差距不太明显
     private Dictionary<Color, ID2D1SolidColorBrush> _solidColorBrushCacahe = new();
+
     private readonly Dictionary<(string FontFamily, float FontSize), IDWriteTextFormat> _textFormatCache = new();
     private readonly Dictionary<PolygonElement, ID2D1PathGeometry> _pathGeometryCache = new();
 

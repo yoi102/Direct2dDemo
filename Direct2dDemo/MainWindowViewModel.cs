@@ -1,6 +1,7 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Direct2dDemo.Direct2D;
+using Direct2dDemo.GDI;
 using Direct2dDemo.Shared;
 using System.Diagnostics;
 using System.Drawing;
@@ -9,14 +10,41 @@ namespace Direct2dDemo;
 
 internal partial class MainWindowViewModel : ObservableObject, IDisposable
 {
+    private int _context_initialized_count;
+
     public MainWindowViewModel()
     {
         Direct2dContext.Initialized += async (s, e) =>
         {
+            _context_initialized_count++;
+            if (_context_initialized_count < 2)
+                return;
+
             await AddEllipseAsync();
             await AddPolygonAsync();
             await AddTextAsync();
         };
+        GdiContext.Initialized += async (s, e) =>
+        {
+            _context_initialized_count++;
+            if (_context_initialized_count < 2)
+                return;
+            await AddEllipseAsync();
+            await AddPolygonAsync();
+            await AddTextAsync();
+        };
+    }
+
+    private bool enableGdi;
+
+    public bool EnableGdi
+    {
+        get { return enableGdi; }
+        set
+        {
+            SetProperty(ref enableGdi, value);
+            GdiContext.IsEnabled = value;
+        }
     }
 
     [ObservableProperty]
@@ -38,9 +66,13 @@ internal partial class MainWindowViewModel : ObservableObject, IDisposable
     public partial double DataGenerationTime { get; set; } = 0;
 
     [ObservableProperty]
-    public partial double RenderingTime { get; set; } = 0;
+    public partial double Direct2dRenderingTime { get; set; } = 0;
+
+    [ObservableProperty]
+    public partial double GdiRenderingTime { get; set; } = 0;
 
     public Direct2dContext Direct2dContext { get; } = new Direct2dContext();
+    public GdiContext GdiContext { get; } = new GdiContext();
 
     private static readonly Random _random = new Random();
 
@@ -51,11 +83,13 @@ internal partial class MainWindowViewModel : ObservableObject, IDisposable
         using var _ = DeferAction.Create(() => Running = false);
 
         Direct2dContext.ClearData();
+        GdiContext.ClearData();
         await this.RefreshAsync();
         EllipseCount = 0;
         PolygonCount = 0;
         TextCount = 0;
     }
+
     [RelayCommand]
     private async Task AddEllipseAsync()
     {
@@ -75,6 +109,8 @@ internal partial class MainWindowViewModel : ObservableObject, IDisposable
 
         List<IDrawingElement> elements = await GenEllipse(hwndWidth, hwndHeight, addCount);
         Direct2dContext.DrawingElements.AddRange(elements);
+        GdiContext.DrawingElements.AddRange(elements);
+
         this.EllipseCount += elements.Count;
         stopwatch.Stop();
         this.DataGenerationTime = stopwatch.ElapsedMilliseconds;
@@ -82,7 +118,14 @@ internal partial class MainWindowViewModel : ObservableObject, IDisposable
         stopwatch.Restart();
         Direct2dContext.Render();
         stopwatch.Stop();
-        this.RenderingTime = stopwatch.ElapsedMilliseconds;
+        this.Direct2dRenderingTime = stopwatch.ElapsedMilliseconds;
+
+        if (!EnableGdi)
+            return;
+        stopwatch.Restart();
+        GdiContext.Render();
+        stopwatch.Stop();
+        GdiRenderingTime = stopwatch.ElapsedMilliseconds;
     }
 
     private static async Task<List<IDrawingElement>> GenEllipse(int hwndWidth, int hwndHeight, int addCount)
@@ -149,6 +192,7 @@ internal partial class MainWindowViewModel : ObservableObject, IDisposable
         List<IDrawingElement> elements = await GenPolygon(hwndWidth, hwndHeight, addCount);
 
         Direct2dContext.DrawingElements.AddRange(elements);
+        GdiContext.DrawingElements.AddRange(elements);
         PolygonCount += elements.Count;
 
         stopwatch.Stop();
@@ -157,7 +201,14 @@ internal partial class MainWindowViewModel : ObservableObject, IDisposable
         stopwatch.Restart();
         Direct2dContext.Render();
         stopwatch.Stop();
-        RenderingTime = stopwatch.ElapsedMilliseconds;
+        Direct2dRenderingTime = stopwatch.ElapsedMilliseconds;
+
+        if (!EnableGdi)
+            return;
+        stopwatch.Restart();
+        GdiContext.Render();
+        stopwatch.Stop();
+        GdiRenderingTime = stopwatch.ElapsedMilliseconds;
     }
 
     private static async Task<List<IDrawingElement>> GenPolygon(int hwndWidth, int hwndHeight, int addCount)
@@ -248,6 +299,7 @@ internal partial class MainWindowViewModel : ObservableObject, IDisposable
         List<IDrawingElement> elements = await GenText(hwndWidth, hwndHeight, addCount);
 
         Direct2dContext.DrawingElements.AddRange(elements);
+        GdiContext.DrawingElements.AddRange(elements);
         TextCount += elements.Count;
 
         stopwatch.Stop();
@@ -256,7 +308,14 @@ internal partial class MainWindowViewModel : ObservableObject, IDisposable
         stopwatch.Restart();
         Direct2dContext.Render();
         stopwatch.Stop();
-        RenderingTime = stopwatch.ElapsedMilliseconds;
+        Direct2dRenderingTime = stopwatch.ElapsedMilliseconds;
+
+        if (!EnableGdi)
+            return;
+        stopwatch.Restart();
+        GdiContext.Render();
+        stopwatch.Stop();
+        GdiRenderingTime = stopwatch.ElapsedMilliseconds;
     }
 
     private static async Task<List<IDrawingElement>> GenText(int hwndWidth, int hwndHeight, int addCount)
@@ -378,7 +437,14 @@ internal partial class MainWindowViewModel : ObservableObject, IDisposable
         stopwatch.Restart();
         Direct2dContext.Render();
         stopwatch.Stop();
-        this.RenderingTime = stopwatch.ElapsedMilliseconds;
+        this.Direct2dRenderingTime = stopwatch.ElapsedMilliseconds;
+
+        if (!EnableGdi)
+            return;
+        stopwatch.Restart();
+        GdiContext.Render();
+        stopwatch.Stop();
+        GdiRenderingTime = stopwatch.ElapsedMilliseconds;
     }
 
     private static float NextFloat(float min, float max)
@@ -424,5 +490,6 @@ internal partial class MainWindowViewModel : ObservableObject, IDisposable
     public void Dispose()
     {
         Direct2dContext.Dispose();
+        GdiContext.Dispose();
     }
 }

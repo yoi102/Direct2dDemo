@@ -15,6 +15,7 @@
 	<ItemGroup>
 	  <ProjectReference Include="..\Direct2dDemo.CustomControl\Direct2dDemo.CustomControl.csproj" />
 	  <ProjectReference Include="..\Direct2dDemo.Direct2D\Direct2dDemo.Direct2D.csproj" />
+	  <ProjectReference Include="..\Direct2dDemo.GDI\Direct2dDemo.GDI.csproj" />
 	  <ProjectReference Include="..\Direct2dDemo.Shared\Direct2dDemo.Shared.csproj" />
 	</ItemGroup>
 

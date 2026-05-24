@@ -4,7 +4,7 @@ using D2D1_COLOR_F = Vanara.PInvoke.DXGI.D3DCOLORVALUE;
 
 namespace Direct2dDemo.Direct2D;
 
-public class Direct2dContext : IDirect2dContext
+public class Direct2dContext : IDrawingContext
 {
     public event EventHandler? Initialized;
     public int Width => direct2DWrapper.Width;
