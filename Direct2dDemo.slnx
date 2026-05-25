@@ -1,7 +1,21 @@
 <Solution>
-  <Project Path="Direct2dDemo.CustomControl/Direct2dDemo.CustomControl.csproj" Id="5867cb8f-7e5c-4e68-8132-7c668ae54fcd" />
-  <Project Path="Direct2dDemo.Direct2D/Direct2dDemo.Direct2D.csproj" Id="06929cb4-9a69-4056-bedd-65a7663621ad" />
-  <Project Path="Direct2dDemo.GDI/Direct2dDemo.GDI.csproj" Id="7679dc7e-935b-4bfa-aabf-0fbd53d6252d" />
-  <Project Path="Direct2dDemo.Shared/Direct2dDemo.Shared.csproj" Id="c9aed1d7-ff1a-461f-a8b0-7a4b4cfbbd16" />
-  <Project Path="Direct2dDemo/Direct2dDemo.csproj" />
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+  </Configurations>
+  <Project Path="Direct2dDemo.CustomControl/Direct2dDemo.CustomControl.csproj" Id="5867cb8f-7e5c-4e68-8132-7c668ae54fcd">
+    <Platform Solution="*|x64" Project="x64" />
+  </Project>
+  <Project Path="Direct2dDemo.Direct2D/Direct2dDemo.Direct2D.csproj" Id="06929cb4-9a69-4056-bedd-65a7663621ad">
+    <Platform Solution="*|x64" Project="x64" />
+  </Project>
+  <Project Path="Direct2dDemo.GDI/Direct2dDemo.GDI.csproj" Id="7679dc7e-935b-4bfa-aabf-0fbd53d6252d">
+    <Platform Solution="*|x64" Project="x64" />
+  </Project>
+  <Project Path="Direct2dDemo.Shared/Direct2dDemo.Shared.csproj" Id="c9aed1d7-ff1a-461f-a8b0-7a4b4cfbbd16">
+    <Platform Solution="*|x64" Project="x64" />
+  </Project>
+  <Project Path="Direct2dDemo/Direct2dDemo.csproj">
+    <Platform Solution="*|x64" Project="x64" />
+  </Project>
 </Solution>
