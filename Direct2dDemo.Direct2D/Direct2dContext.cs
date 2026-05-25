@@ -65,7 +65,10 @@ public class Direct2dContext : IDrawingContext
         DrawingElements.Clear();
         direct2DWrapper.ClearCache();
     }
+    public void Present()
+    {
 
+    }
     public void Dispose()
     {
         direct2DWrapper.Dispose();

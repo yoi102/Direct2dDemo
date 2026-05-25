@@ -12,5 +12,7 @@ public interface IDrawingContext : IDisposable
 
     void Render();
 
+    void Present();
+
     void ClearData();
 }

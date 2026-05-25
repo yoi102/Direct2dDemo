@@ -1,4 +1,5 @@
 ﻿using Direct2dDemo.Shared;
+using System.Drawing;
 using Vanara.PInvoke;
 using static Vanara.PInvoke.Gdi32;
 
@@ -36,11 +37,14 @@ internal static class DrawExtension
             return;
 
         var hdc = gdiWrapper.Hdc;
-        var font = gdiWrapper.GetOrCreateFont(element.FontFamily, element.FontSize);
+
+        SafeHFONT? font = null;
+
+        font = CreateFont(element.FontFamily, element.FontSize);
 
         var oldFont = Gdi32.SelectObject(hdc, font);
         var oldBkMode = Gdi32.SetBkMode(hdc, BackgroundMode.TRANSPARENT);
-        var oldTextColor = Gdi32.SetTextColor(hdc, GdiWrapper.ToColorRef(element.Color));
+        var oldTextColor = Gdi32.SetTextColor(hdc, ToColorRef(element.Color));
 
         try
         {
@@ -59,8 +63,9 @@ internal static class DrawExtension
             if (oldBkMode != 0)
                 Gdi32.SetBkMode(hdc, oldBkMode);
 
-            //if (oldTextColor != Gdi32.CLR_INVALID)
             Gdi32.SetTextColor(hdc, oldTextColor);
+
+            font?.Dispose();
         }
     }
 
@@ -77,12 +82,15 @@ internal static class DrawExtension
 
         var hdc = gdiWrapper.Hdc;
 
+        SafeHBRUSH? createdBrush = null;
+        SafeHPEN? createdPen = null;
+
         var brush = hasFill
-            ? gdiWrapper.GetOrCreateSolidBrush(element.FillColor)
+            ? createdBrush = CreateSolidBrush(element.FillColor)
             : Gdi32.GetStockObject(StockObjectType.HOLLOW_BRUSH);
 
         var pen = hasStroke
-            ? gdiWrapper.GetOrCreatePen(element.StrokeColor, element.StrokeWidth)
+            ? createdPen = CreatePen(element.StrokeColor, element.StrokeWidth)
             : Gdi32.GetStockObject(StockObjectType.NULL_PEN);
 
         var points = new POINT[element.Points.Count];
@@ -109,6 +117,9 @@ internal static class DrawExtension
 
             if (oldPen != nint.Zero)
                 Gdi32.SelectObject(hdc, oldPen);
+
+            createdBrush?.Dispose();
+            createdPen?.Dispose();
         }
     }
 
@@ -125,12 +136,15 @@ internal static class DrawExtension
 
         var hdc = gdiWrapper.Hdc;
 
+        SafeHBRUSH? createdBrush = null;
+        SafeHPEN? createdPen = null;
+
         var brush = hasFill
-            ? gdiWrapper.GetOrCreateSolidBrush(element.FillColor)
+            ? createdBrush = CreateSolidBrush(element.FillColor)
             : Gdi32.GetStockObject(StockObjectType.HOLLOW_BRUSH);
 
         var pen = hasStroke
-            ? gdiWrapper.GetOrCreatePen(element.StrokeColor, element.StrokeWidth)
+            ? createdPen = CreatePen(element.StrokeColor, element.StrokeWidth)
             : Gdi32.GetStockObject(StockObjectType.NULL_PEN);
 
         var left = ToInt(element.Center.X - element.RadiusX);
@@ -152,7 +166,71 @@ internal static class DrawExtension
 
             if (oldPen != nint.Zero)
                 Gdi32.SelectObject(hdc, oldPen);
+
+            createdBrush?.Dispose();
+            createdPen?.Dispose();
         }
+    }
+
+    public static SafeHBRUSH CreateSolidBrush(Color color)
+    {
+        var brush = Gdi32.CreateSolidBrush(ToColorRef(color));
+        if (brush is null)
+            throw new InvalidOperationException("CreateSolidBrush failed.");
+
+        return brush;
+    }
+
+    public static SafeHPEN CreatePen(Color color, float width)
+    {
+        var penWidth = Math.Max(1, (int)Math.Round(width));
+        var key = (color, penWidth);
+
+        var pen = Gdi32.CreatePen(Gdi32.PenStyle.PS_SOLID, penWidth, ToColorRef(color));
+        if (pen == nint.Zero)
+            throw new InvalidOperationException("CreatePen failed.");
+
+        return pen;
+    }
+
+    public static SafeHFONT CreateFont(string? fontFamily, float fontSize)
+    {
+        if (fontSize <= 0)
+            throw new ArgumentOutOfRangeException(nameof(fontSize));
+
+        var family = string.IsNullOrWhiteSpace(fontFamily)
+            ? "Meiryo"
+            : fontFamily.Trim();
+
+        var size = Math.Max(1, (int)Math.Round(fontSize));
+
+        // Negative height means "character height" in logical pixels.
+        var font = Gdi32.CreateFont(
+            -size,
+            0,
+            0,
+            0,
+            Gdi32.FW_NORMAL,
+            false,
+            false,
+            false,
+            CharacterSet.DEFAULT_CHARSET,
+            OutputPrecision.OUT_DEFAULT_PRECIS,
+            ClippingPrecision.CLIP_DEFAULT_PRECIS,
+            OutputQuality.CLEARTYPE_QUALITY,
+            PitchAndFamily.DEFAULT_PITCH | PitchAndFamily.FF_DONTCARE,
+            family);
+
+        if (font == nint.Zero)
+            throw new InvalidOperationException("CreateFont failed.");
+
+        return font;
+    }
+
+    internal static int ToColorRef(Color color)
+    {
+        // COLORREF is 0x00BBGGRR. GDI ignores alpha.
+        return color.R | (color.G << 8) | (color.B << 16);
     }
 
     private static int ToInt(float value)

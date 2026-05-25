@@ -18,10 +18,6 @@ internal sealed class GdiWrapper : IDisposable
     private bool _isDrawing;
     private bool _disposed;
 
-    private readonly Dictionary<Color, SafeHBRUSH> _brushCache = new();
-    private readonly Dictionary<(Color Color, int Width), SafeHPEN> _penCache = new();
-    private readonly Dictionary<(string FontFamily, int FontSize), SafeHFONT> _fontCache = new();
-
     public int Width => _width;
     public int Height => _height;
 
@@ -168,7 +164,7 @@ internal sealed class GdiWrapper : IDisposable
         if (!_isDrawing)
             throw new InvalidOperationException("Clear must be called between BeginDraw and EndDraw.");
 
-        var brush = GetOrCreateSolidBrush(color);
+        using var brush = DrawExtension.CreateSolidBrush(color);
 
         var rect = new RECT
         {
@@ -181,95 +177,6 @@ internal sealed class GdiWrapper : IDisposable
         User32.FillRect(_memoryDc, rect, brush);
     }
 
-    public SafeHBRUSH GetOrCreateSolidBrush(Color color)
-    {
-        ThrowIfDisposed();
-
-        if (_brushCache.TryGetValue(color, out var cached))
-            return cached;
-
-        var brush = Gdi32.CreateSolidBrush(ToColorRef(color));
-        if (brush is null)
-            throw new InvalidOperationException("CreateSolidBrush failed.");
-
-        _brushCache[color] = brush;
-        return brush;
-    }
-
-    public SafeHPEN GetOrCreatePen(Color color, float width)
-    {
-        ThrowIfDisposed();
-
-        var penWidth = Math.Max(1, (int)Math.Round(width));
-        var key = (color, penWidth);
-
-        if (_penCache.TryGetValue(key, out var cached))
-            return cached;
-
-        var pen = Gdi32.CreatePen(Gdi32.PenStyle.PS_SOLID, penWidth, ToColorRef(color));
-        if (pen == nint.Zero)
-            throw new InvalidOperationException("CreatePen failed.");
-
-        _penCache[key] = pen;
-        return pen;
-    }
-
-    public SafeHFONT GetOrCreateFont(string? fontFamily, float fontSize)
-    {
-        ThrowIfDisposed();
-
-        if (fontSize <= 0)
-            throw new ArgumentOutOfRangeException(nameof(fontSize));
-
-        var family = string.IsNullOrWhiteSpace(fontFamily)
-            ? "Meiryo"
-            : fontFamily.Trim();
-
-        var size = Math.Max(1, (int)Math.Round(fontSize));
-        var key = (family, size);
-
-        if (_fontCache.TryGetValue(key, out var cached))
-            return cached;
-
-        // Negative height means "character height" in logical pixels.
-        var font = Gdi32.CreateFont(
-            -size,
-            0,
-            0,
-            0,
-            Gdi32.FW_NORMAL,
-            false,
-            false,
-            false,
-            CharacterSet.DEFAULT_CHARSET,
-            OutputPrecision.OUT_DEFAULT_PRECIS,
-            ClippingPrecision.CLIP_DEFAULT_PRECIS,
-            OutputQuality.CLEARTYPE_QUALITY,
-            PitchAndFamily.DEFAULT_PITCH | PitchAndFamily.FF_DONTCARE,
-            family);
-
-        if (font == nint.Zero)
-            throw new InvalidOperationException("CreateFont failed.");
-
-        _fontCache[key] = font;
-        return font;
-    }
-
-    public void ClearCache()
-    {
-        foreach (var brush in _brushCache.Values)
-            brush.Dispose();
-        _brushCache.Clear();
-
-        foreach (var pen in _penCache.Values)
-            pen.Dispose();
-        _penCache.Clear();
-
-        foreach (var font in _fontCache.Values)
-            font.Dispose();
-        _fontCache.Clear();
-    }
-
     public void Dispose()
     {
         if (_disposed)
@@ -279,7 +186,6 @@ internal sealed class GdiWrapper : IDisposable
             _isDrawing = false;
 
         ReleaseHwndTarget();
-        ClearCache();
 
         _disposed = true;
     }
@@ -360,11 +266,5 @@ internal sealed class GdiWrapper : IDisposable
     {
         if (_disposed)
             throw new ObjectDisposedException(nameof(GdiWrapper));
-    }
-
-    internal static int ToColorRef(Color color)
-    {
-        // COLORREF is 0x00BBGGRR. GDI ignores alpha.
-        return color.R | (color.G << 8) | (color.B << 16);
     }
 }

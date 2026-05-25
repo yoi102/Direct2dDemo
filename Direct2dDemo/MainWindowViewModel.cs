@@ -35,18 +35,6 @@ internal partial class MainWindowViewModel : ObservableObject, IDisposable
         };
     }
 
-    private bool enableGdi;
-
-    public bool EnableGdi
-    {
-        get { return enableGdi; }
-        set
-        {
-            SetProperty(ref enableGdi, value);
-            GdiContext.IsEnabled = value;
-        }
-    }
-
     [ObservableProperty]
     public partial bool Running { get; set; } = false;
 
@@ -120,8 +108,6 @@ internal partial class MainWindowViewModel : ObservableObject, IDisposable
         stopwatch.Stop();
         this.Direct2dRenderingTime = stopwatch.ElapsedMilliseconds;
 
-        if (!EnableGdi)
-            return;
         stopwatch.Restart();
         GdiContext.Render();
         stopwatch.Stop();
@@ -203,8 +189,6 @@ internal partial class MainWindowViewModel : ObservableObject, IDisposable
         stopwatch.Stop();
         Direct2dRenderingTime = stopwatch.ElapsedMilliseconds;
 
-        if (!EnableGdi)
-            return;
         stopwatch.Restart();
         GdiContext.Render();
         stopwatch.Stop();
@@ -310,8 +294,6 @@ internal partial class MainWindowViewModel : ObservableObject, IDisposable
         stopwatch.Stop();
         Direct2dRenderingTime = stopwatch.ElapsedMilliseconds;
 
-        if (!EnableGdi)
-            return;
         stopwatch.Restart();
         GdiContext.Render();
         stopwatch.Stop();
@@ -439,8 +421,6 @@ internal partial class MainWindowViewModel : ObservableObject, IDisposable
         stopwatch.Stop();
         this.Direct2dRenderingTime = stopwatch.ElapsedMilliseconds;
 
-        if (!EnableGdi)
-            return;
         stopwatch.Restart();
         GdiContext.Render();
         stopwatch.Stop();

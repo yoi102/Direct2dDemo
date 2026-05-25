@@ -5,8 +5,6 @@ namespace Direct2dDemo.GDI;
 
 public class GdiContext : IDrawingContext
 {
-    public bool IsEnabled { get; set; }
-
     public event EventHandler? Initialized;
 
     private readonly GdiWrapper gdiWrapper = new GdiWrapper();
@@ -22,8 +20,7 @@ public class GdiContext : IDrawingContext
     {
         if (!gdiWrapper.IsTargetReady)
             return;
-        if (!IsEnabled)
-            return;
+
         gdiWrapper.BeginDraw();
 
         try
@@ -68,7 +65,11 @@ public class GdiContext : IDrawingContext
     public void ClearData()
     {
         DrawingElements.Clear();
-        gdiWrapper.ClearCache();
+    }
+
+    public void Present()
+    {
+        gdiWrapper.Present();
     }
 
     public void Dispose()

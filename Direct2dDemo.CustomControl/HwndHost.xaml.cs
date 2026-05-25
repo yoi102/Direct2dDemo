@@ -19,7 +19,7 @@ public partial class HwndHost : System.Windows.Controls.UserControl
     {
         if (DrawingContext is null)
             return;
-        DrawingContext.Render();
+        DrawingContext.Present();
     }
 
     private void PanelHost_Resize(object? sender, EventArgs e)
