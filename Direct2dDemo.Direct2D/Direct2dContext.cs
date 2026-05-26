@@ -36,6 +36,7 @@ public class Direct2dContext : IDrawingContext, ICanvasContext
         stopwatch.Stop();
         Rendered?.Invoke(this, stopwatch.ElapsedMilliseconds);
 
+        Direct2DWrapper.SafeRelease(ref _commandList);
     }
 
 
@@ -49,6 +50,7 @@ public class Direct2dContext : IDrawingContext, ICanvasContext
         if (direct2DWrapper.Context is null)
             return;
         direct2DWrapper.Context.Clear(background);
+        Direct2DWrapper.SafeRelease(ref _commandList);
     }
 
     private void Draw()
@@ -101,6 +103,7 @@ public class Direct2dContext : IDrawingContext, ICanvasContext
 
     public void Move(int deltaX, int deltaY)
     {
+        //比重新绘制快一些。
         stopwatch.Restart();
 
 
