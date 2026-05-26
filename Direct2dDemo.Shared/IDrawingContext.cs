@@ -16,3 +16,11 @@ public interface IDrawingContext : IDisposable
 
     void ClearData();
 }
+
+
+public interface ICanvasContext
+{
+    void Move(int deltaX, int deltaY);
+    void Zoom(float zoomFactor, int centerX, int centerY);
+
+}

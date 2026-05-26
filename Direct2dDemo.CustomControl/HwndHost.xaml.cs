@@ -13,6 +13,43 @@ public partial class HwndHost : System.Windows.Controls.UserControl
         InitializeComponent();
         panelHost.Resize += PanelHost_Resize;
         panelHost.Paint += PanelHost_Paint;
+        panelHost.MouseMove += PanelHost_MouseMove;
+        panelHost.MouseDown += PanelHost_MouseDown;
+        panelHost.MouseWheel += PanelHost_MouseWheel;
+    }
+
+    private void PanelHost_MouseWheel(object? sender, MouseEventArgs e)
+    {
+        if (DrawingContext is ICanvasContext canvasContext)
+        {
+
+            canvasContext.Zoom(e.Delta > 0 ? 1.1f : 0.9f, e.X, e.Y);
+        }
+    }
+
+    private int rightButtonX;
+    private int rightButtonY;
+
+    private void PanelHost_MouseDown(object? sender, MouseEventArgs e)
+    {
+        if (e.Button == MouseButtons.Right)
+        {
+            rightButtonX = e.X;
+            rightButtonY = e.Y;
+        }
+    }
+
+    private void PanelHost_MouseMove(object? sender, MouseEventArgs e)
+    {
+        if (e.Button == MouseButtons.Right)
+        {
+            if (DrawingContext is ICanvasContext canvasContext)
+            {
+                var deltaX = e.X - rightButtonX;
+                var deltaY = e.Y - rightButtonY;
+                canvasContext.Move(deltaX, deltaY);
+            }
+        }
     }
 
     private void PanelHost_Paint(object? sender, PaintEventArgs e)

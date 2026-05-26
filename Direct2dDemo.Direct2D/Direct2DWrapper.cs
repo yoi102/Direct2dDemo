@@ -650,7 +650,7 @@ internal sealed class Direct2DWrapper : IDisposable
             throw new ObjectDisposedException(nameof(Direct2DWrapper));
     }
 
-    private static void SafeRelease<T>(ref T? comObject)
+    public static void SafeRelease<T>(ref T? comObject)
         where T : class
     {
         if (comObject == null)

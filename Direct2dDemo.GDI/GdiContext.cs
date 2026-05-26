@@ -1,10 +1,15 @@
 ﻿using Direct2dDemo.Shared;
+using System.Diagnostics;
 using System.Drawing;
 
 namespace Direct2dDemo.GDI;
 
 public class GdiContext : IDrawingContext
 {
+    private Stopwatch stopwatch = new Stopwatch();
+
+    public event EventHandler<double>? Rendered;
+
     public event EventHandler? Initialized;
 
     private readonly GdiWrapper gdiWrapper = new GdiWrapper();
@@ -20,7 +25,7 @@ public class GdiContext : IDrawingContext
     {
         if (!gdiWrapper.IsTargetReady)
             return;
-
+        stopwatch.Restart();
         gdiWrapper.BeginDraw();
 
         try
@@ -34,6 +39,8 @@ public class GdiContext : IDrawingContext
         }
 
         gdiWrapper.Present();
+        stopwatch.Stop();
+        Rendered?.Invoke(this, stopwatch.ElapsedMilliseconds);
     }
 
     private void Clear()

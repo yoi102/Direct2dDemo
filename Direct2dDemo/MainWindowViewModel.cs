@@ -33,6 +33,16 @@ internal partial class MainWindowViewModel : ObservableObject, IDisposable
             await AddPolygonAsync();
             await AddTextAsync();
         };
+
+        Direct2dContext.Rendered += (s, time) =>
+        {
+            Direct2dRenderingTime = time;
+        };
+        GdiContext.Rendered += (s, time) =>
+        {
+            GdiRenderingTime = time;
+        };
+
     }
 
     [ObservableProperty]
@@ -103,15 +113,10 @@ internal partial class MainWindowViewModel : ObservableObject, IDisposable
         stopwatch.Stop();
         this.DataGenerationTime = stopwatch.ElapsedMilliseconds;
 
-        stopwatch.Restart();
         Direct2dContext.Render();
-        stopwatch.Stop();
-        this.Direct2dRenderingTime = stopwatch.ElapsedMilliseconds;
 
-        stopwatch.Restart();
         GdiContext.Render();
-        stopwatch.Stop();
-        GdiRenderingTime = stopwatch.ElapsedMilliseconds;
+
     }
 
     private static async Task<List<IDrawingElement>> GenEllipse(int hwndWidth, int hwndHeight, int addCount)
@@ -184,15 +189,9 @@ internal partial class MainWindowViewModel : ObservableObject, IDisposable
         stopwatch.Stop();
         DataGenerationTime = stopwatch.ElapsedMilliseconds;
 
-        stopwatch.Restart();
         Direct2dContext.Render();
-        stopwatch.Stop();
-        Direct2dRenderingTime = stopwatch.ElapsedMilliseconds;
 
-        stopwatch.Restart();
         GdiContext.Render();
-        stopwatch.Stop();
-        GdiRenderingTime = stopwatch.ElapsedMilliseconds;
     }
 
     private static async Task<List<IDrawingElement>> GenPolygon(int hwndWidth, int hwndHeight, int addCount)
@@ -289,15 +288,9 @@ internal partial class MainWindowViewModel : ObservableObject, IDisposable
         stopwatch.Stop();
         DataGenerationTime = stopwatch.ElapsedMilliseconds;
 
-        stopwatch.Restart();
         Direct2dContext.Render();
-        stopwatch.Stop();
-        Direct2dRenderingTime = stopwatch.ElapsedMilliseconds;
 
-        stopwatch.Restart();
         GdiContext.Render();
-        stopwatch.Stop();
-        GdiRenderingTime = stopwatch.ElapsedMilliseconds;
     }
 
     private static async Task<List<IDrawingElement>> GenText(int hwndWidth, int hwndHeight, int addCount)
@@ -415,16 +408,9 @@ internal partial class MainWindowViewModel : ObservableObject, IDisposable
         Running = true;
         using var _ = DeferAction.Create(() => Running = false);
 
-        var stopwatch = Stopwatch.StartNew();
-        stopwatch.Restart();
         Direct2dContext.Render();
-        stopwatch.Stop();
-        this.Direct2dRenderingTime = stopwatch.ElapsedMilliseconds;
 
-        stopwatch.Restart();
         GdiContext.Render();
-        stopwatch.Stop();
-        GdiRenderingTime = stopwatch.ElapsedMilliseconds;
     }
 
     private static float NextFloat(float min, float max)
