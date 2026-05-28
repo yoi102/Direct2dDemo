@@ -112,6 +112,43 @@ internal sealed class Direct2DWrapper : IDisposable
         _d2dContext.SetTarget(_targetBitmap);
     }
 
+
+    public ID2D1Bitmap? CreateBitmap()
+    {
+        ThrowIfDisposed();
+
+        if (_targetBitmap is null)
+            return null;
+
+        if (_d2dContext is null)
+            return null;
+
+        _targetBitmap.GetPixelSize(out var pixelSize);
+        _targetBitmap.GetDpi(out var dpiX, out var dpiY);
+
+        var pixelFormat = _targetBitmap.GetPixelFormat();
+
+        var bitmapProperties = new D2D1_BITMAP_PROPERTIES1
+        {
+            pixelFormat = pixelFormat,
+            dpiX = dpiX,
+            dpiY = dpiY,
+            bitmapOptions = D2D1_BITMAP_OPTIONS.D2D1_BITMAP_OPTIONS_TARGET
+        };
+
+ 
+
+        var newBitmap = _d2dContext.CreateBitmap(
+            pixelSize,
+            nint.Zero,
+            0,
+            bitmapProperties
+        );
+
+        return newBitmap;
+    }
+
+
     //public void SaveAsPdf(
     //ID2D1DeviceContext deviceContext,
     //float pageWidthDip,

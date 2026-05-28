@@ -37,6 +37,7 @@ public class Direct2dContext : IDrawingContext, ICanvasContext
         Rendered?.Invoke(this, stopwatch.ElapsedMilliseconds);
 
         Direct2DWrapper.SafeRelease(ref _commandList);
+        Direct2DWrapper.SafeRelease(ref staticBitmap);
     }
 
 
@@ -94,7 +95,7 @@ public class Direct2dContext : IDrawingContext, ICanvasContext
 
 
 
-
+    ID2D1Bitmap? staticBitmap;
 
 
 
@@ -110,6 +111,32 @@ public class Direct2dContext : IDrawingContext, ICanvasContext
         _offsetX += deltaX;
         _offsetY += deltaY;
 
+        //if (staticBitmap is null && direct2DWrapper.Context is not null)
+        //{
+        //    staticBitmap = this.direct2DWrapper.CreateBitmap();
+        //    direct2DWrapper.Context.GetTarget(out var oldImage);
+        //    direct2DWrapper.Context.SetTarget(staticBitmap);
+        //    direct2DWrapper.Context.BeginDraw();
+        //    direct2DWrapper.Context.Clear(background);
+        //    Draw();
+        //    direct2DWrapper.Context.EndDraw();
+        //    direct2DWrapper.Present();
+        //    direct2DWrapper.Context.SetTarget(oldImage);
+        //}
+        //if (staticBitmap is not null && direct2DWrapper.Context is not null)
+        //{
+        //    direct2DWrapper.BeginDraw();
+        //    direct2DWrapper.Context.Clear(background);
+        //    direct2DWrapper.Context.DrawBitmap(
+        //     staticBitmap,
+        //     new D2D_RECT_F(_offsetX, _offsetY, _offsetX + Width, _offsetY + Height),
+        //     1.0f,
+        //     D2D1_INTERPOLATION_MODE.D2D1_INTERPOLATION_MODE_NEAREST_NEIGHBOR,
+        //     new D2D_RECT_F(0, 0, Width, Height));
+
+        //    direct2DWrapper.EndDraw();
+        //    direct2DWrapper.Present();
+        //}
         RenderCommandList();
 
         //暂时不知道怎么增量更新
@@ -199,6 +226,7 @@ public class Direct2dContext : IDrawingContext, ICanvasContext
     {
         if (zoomFactor <= 0)
             return;
+        Direct2DWrapper.SafeRelease(ref staticBitmap);
         stopwatch.Restart();
 
         var oldScale = _scale;
