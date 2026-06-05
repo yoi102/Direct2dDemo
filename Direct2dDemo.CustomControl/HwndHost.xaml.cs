@@ -54,9 +54,14 @@ public partial class HwndHost : System.Windows.Controls.UserControl
 
     private void PanelHost_Paint(object? sender, PaintEventArgs e)
     {
-        if (DrawingContext is null)
+        if (DrawingContext is not IDrawingGdiContext drawingGdiContext)
             return;
-        DrawingContext.Present();
+
+        var hdc = e.Graphics.GetHdc();
+
+        drawingGdiContext.Present(hdc);
+
+        e.Graphics.ReleaseHdc(hdc);
     }
 
     private void PanelHost_Resize(object? sender, EventArgs e)

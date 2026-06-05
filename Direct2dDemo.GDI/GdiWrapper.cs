@@ -105,34 +105,26 @@ internal sealed class GdiWrapper : IDisposable
         _isDrawing = false;
     }
 
-    public void Present()
+    public void Present(nint hdc)
     {
         ThrowIfDisposed();
         EnsureTargetReady();
 
-        var windowDc = User32.GetDC(_hwnd);
-        if (windowDc == nint.Zero)
+        if (hdc == nint.Zero)
             throw new InvalidOperationException("GetDC failed.");
 
-        try
+        if (!Gdi32.BitBlt(
+                hdc,
+                0,
+                0,
+                _width,
+                _height,
+                _memoryDc,
+                0,
+                0,
+                RasterOperationMode.SRCCOPY))
         {
-            if (!Gdi32.BitBlt(
-                    windowDc,
-                    0,
-                    0,
-                    _width,
-                    _height,
-                    _memoryDc,
-                    0,
-                    0,
-                    RasterOperationMode.SRCCOPY))
-            {
-                throw new InvalidOperationException("BitBlt failed.");
-            }
-        }
-        finally
-        {
-            User32.ReleaseDC(_hwnd, windowDc);
+            throw new InvalidOperationException("BitBlt failed.");
         }
     }
 
@@ -152,8 +144,6 @@ internal sealed class GdiWrapper : IDisposable
         {
             EndDraw();
         }
-
-        Present();
     }
 
     public void Clear(Color color)

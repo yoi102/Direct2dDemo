@@ -12,15 +12,17 @@ public interface IDrawingContext : IDisposable
 
     void Render();
 
-    void Present();
-
     void ClearData();
 }
 
+public interface IDrawingGdiContext
+{
+    void Present(nint hdc);
+}
 
 public interface ICanvasContext
 {
     void Move(int deltaX, int deltaY);
-    void Zoom(float zoomFactor, int centerX, int centerY);
 
+    void Zoom(float zoomFactor, int centerX, int centerY);
 }

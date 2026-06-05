@@ -11,8 +11,11 @@ namespace Direct2dDemo.Direct2D;
 public class Direct2dContext : IDrawingContext, ICanvasContext
 {
     private Stopwatch stopwatch = new Stopwatch();
+
     public event EventHandler<double>? Rendered;
+
     public event EventHandler? Initialized;
+
     public int Width => direct2DWrapper.Width;
     public int Height => direct2DWrapper.Height;
     public List<IDrawingElement> DrawingElements { get; } = new List<IDrawingElement>();
@@ -39,12 +42,6 @@ public class Direct2dContext : IDrawingContext, ICanvasContext
         Direct2DWrapper.SafeRelease(ref _commandList);
         Direct2DWrapper.SafeRelease(ref staticBitmap);
     }
-
-
-
-
-
-
 
     private void Clear()
     {
@@ -83,21 +80,13 @@ public class Direct2dContext : IDrawingContext, ICanvasContext
         DrawingElements.Clear();
         direct2DWrapper.ClearCache();
     }
-    public void Present()
-    {
 
-    }
     public void Dispose()
     {
         direct2DWrapper.Dispose();
     }
 
-
-
-
-    ID2D1Bitmap? staticBitmap;
-
-
+    private ID2D1Bitmap? staticBitmap;
 
     private float _offsetX;
     private float _offsetY;
@@ -106,7 +95,6 @@ public class Direct2dContext : IDrawingContext, ICanvasContext
     {
         //比重新绘制快一些。
         stopwatch.Restart();
-
 
         _offsetX += deltaX;
         _offsetY += deltaY;
@@ -142,7 +130,6 @@ public class Direct2dContext : IDrawingContext, ICanvasContext
         //暂时不知道怎么增量更新
         _offsetX = 0;
         _offsetY = 0;
-
 
         stopwatch.Stop();
         Rendered?.Invoke(this, stopwatch.ElapsedMilliseconds);
@@ -180,7 +167,6 @@ public class Direct2dContext : IDrawingContext, ICanvasContext
         return true;
     }
 
-
     private void RenderCommandList()
     {
         if (direct2DWrapper.Context is null)
@@ -215,13 +201,10 @@ public class Direct2dContext : IDrawingContext, ICanvasContext
         direct2DWrapper.Present();
     }
 
-
-
-
-
     private float _scale = 1.0f;
     private const float MinScale = 0.05f;
     private const float MaxScale = 100.0f;
+
     public void Zoom(float zoomFactor, int centerX, int centerY)
     {
         if (zoomFactor <= 0)
@@ -244,7 +227,6 @@ public class Direct2dContext : IDrawingContext, ICanvasContext
 
         RenderCommandList();
 
-
         stopwatch.Stop();
         Rendered?.Invoke(this, stopwatch.ElapsedMilliseconds);
     }
@@ -259,10 +241,4 @@ public class Direct2dContext : IDrawingContext, ICanvasContext
 
         return value;
     }
-
-
-
-
-
-
 }

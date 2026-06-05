@@ -4,7 +4,7 @@ using System.Drawing;
 
 namespace Direct2dDemo.GDI;
 
-public class GdiContext : IDrawingContext
+public class GdiContext : IDrawingContext, IDrawingGdiContext
 {
     private Stopwatch stopwatch = new Stopwatch();
 
@@ -38,7 +38,6 @@ public class GdiContext : IDrawingContext
             gdiWrapper.EndDraw();
         }
 
-        gdiWrapper.Present();
         stopwatch.Stop();
         Rendered?.Invoke(this, stopwatch.ElapsedMilliseconds);
     }
@@ -74,9 +73,9 @@ public class GdiContext : IDrawingContext
         DrawingElements.Clear();
     }
 
-    public void Present()
+    public void Present(nint hdc)
     {
-        gdiWrapper.Present();
+        gdiWrapper.Present(hdc);
     }
 
     public void Dispose()
