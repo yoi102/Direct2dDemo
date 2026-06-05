@@ -10,8 +10,6 @@ public class GdiContext : IDrawingContext, IDrawingGdiContext
 
     public event EventHandler<double>? Rendered;
 
-    public event EventHandler? Initialized;
-
     private readonly GdiWrapper gdiWrapper = new GdiWrapper();
 
     public int Width => gdiWrapper.Width;
@@ -65,7 +63,6 @@ public class GdiContext : IDrawingContext, IDrawingGdiContext
     {
         gdiWrapper.SetTarget(hwnd, width, height);
         Render();
-        Initialized?.Invoke(this, EventArgs.Empty);
     }
 
     public void ClearData()
@@ -73,9 +70,9 @@ public class GdiContext : IDrawingContext, IDrawingGdiContext
         DrawingElements.Clear();
     }
 
-    public void Present(nint hdc)
+    public void BitBlt(nint hdc)
     {
-        gdiWrapper.Present(hdc);
+        gdiWrapper.BitBlt(hdc);
     }
 
     public void Dispose()

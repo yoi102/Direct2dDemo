@@ -16,13 +16,19 @@ public partial class HwndHost : System.Windows.Controls.UserControl
         panelHost.MouseMove += PanelHost_MouseMove;
         panelHost.MouseDown += PanelHost_MouseDown;
         panelHost.MouseWheel += PanelHost_MouseWheel;
+
+        this.Loaded += HwndHost_Loaded;
+    }
+
+    private void HwndHost_Loaded(object sender, RoutedEventArgs e)
+    {
+        DrawingContext.Initialize(panelHost.Handle, panelHost.Width, panelHost.ClientSize.Height);
     }
 
     private void PanelHost_MouseWheel(object? sender, MouseEventArgs e)
     {
         if (DrawingContext is ICanvasContext canvasContext)
         {
-
             canvasContext.Zoom(e.Delta > 0 ? 1.1f : 0.9f, e.X, e.Y);
         }
     }
@@ -59,7 +65,7 @@ public partial class HwndHost : System.Windows.Controls.UserControl
 
         var hdc = e.Graphics.GetHdc();
 
-        drawingGdiContext.Present(hdc);
+        drawingGdiContext.BitBlt(hdc);
 
         e.Graphics.ReleaseHdc(hdc);
     }
@@ -93,6 +99,6 @@ public partial class HwndHost : System.Windows.Controls.UserControl
         if (e.NewValue is not IDrawingContext drawingContext)
             throw new ArgumentNullException(nameof(e.NewValue));
 
-        drawingContext.Initialize(hwndHost.panelHost.Handle, hwndHost.panelHost.ClientSize.Width, hwndHost.panelHost.ClientSize.Height);
+        //drawingContext.Initialize(hwndHost.panelHost.Handle, hwndHost.panelHost.ClientSize.Width, hwndHost.panelHost.ClientSize.Height);
     }
 }

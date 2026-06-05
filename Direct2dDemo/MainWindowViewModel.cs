@@ -14,26 +14,6 @@ internal partial class MainWindowViewModel : ObservableObject, IDisposable
 
     public MainWindowViewModel()
     {
-        Direct2dContext.Initialized += async (s, e) =>
-        {
-            _context_initialized_count++;
-            if (_context_initialized_count < 2)
-                return;
-
-            await AddEllipseAsync();
-            await AddPolygonAsync();
-            await AddTextAsync();
-        };
-        GdiContext.Initialized += async (s, e) =>
-        {
-            _context_initialized_count++;
-            if (_context_initialized_count < 2)
-                return;
-            await AddEllipseAsync();
-            await AddPolygonAsync();
-            await AddTextAsync();
-        };
-
         Direct2dContext.Rendered += (s, time) =>
         {
             Direct2dRenderingTime = time;
@@ -42,7 +22,46 @@ internal partial class MainWindowViewModel : ObservableObject, IDisposable
         {
             GdiRenderingTime = time;
         };
+    }
 
+    internal async Task InitAsync()
+    {
+        Running = true;
+        using var _ = DeferAction.Create(() => Running = false);
+        var hwndWidth = Direct2dContext.Width;
+        var hwndHeight = Direct2dContext.Height;
+        var addCount = AddCount;
+
+        if (hwndWidth <= 0 || hwndHeight <= 0 || addCount <= 0)
+            return;
+        var stopwatch = Stopwatch.StartNew();
+
+        List<IDrawingElement> ellipse_elements = await GenEllipse(hwndWidth, hwndHeight, addCount);
+        Direct2dContext.DrawingElements.AddRange(ellipse_elements);
+        GdiContext.DrawingElements.AddRange(ellipse_elements);
+        this.EllipseCount += ellipse_elements.Count;
+
+        List<IDrawingElement> polygon_elements = await GenPolygon(hwndWidth, hwndHeight, addCount);
+
+        Direct2dContext.DrawingElements.AddRange(polygon_elements);
+        GdiContext.DrawingElements.AddRange(polygon_elements);
+        PolygonCount += polygon_elements.Count;
+        PolygonCount += polygon_elements.Count;
+
+        List<IDrawingElement> text_elements = await GenText(hwndWidth, hwndHeight, addCount);
+
+        Direct2dContext.DrawingElements.AddRange(text_elements);
+        GdiContext.DrawingElements.AddRange(text_elements);
+        TextCount += text_elements.Count;
+
+        stopwatch.Stop();
+        this.DataGenerationTime = stopwatch.ElapsedMilliseconds;
+
+        await Task.Delay(3000); // 模拟一些额外的处理时间，方便观察 UI 反应
+
+        Direct2dContext.Render();
+
+        GdiContext.Render();
     }
 
     [ObservableProperty]
@@ -116,7 +135,6 @@ internal partial class MainWindowViewModel : ObservableObject, IDisposable
         Direct2dContext.Render();
 
         GdiContext.Render();
-
     }
 
     private static async Task<List<IDrawingElement>> GenEllipse(int hwndWidth, int hwndHeight, int addCount)
@@ -189,9 +207,7 @@ internal partial class MainWindowViewModel : ObservableObject, IDisposable
         stopwatch.Stop();
         DataGenerationTime = stopwatch.ElapsedMilliseconds;
 
-
         await Task.Delay(3000); // 模拟一些额外的处理时间，方便观察 UI 反应
-
 
         Direct2dContext.Render();
 

@@ -13,7 +13,14 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         this.DataContext = vm = new MainWindowViewModel();
+
+        this.ContentRendered += async (sender, e) =>
+        {
+            await vm.InitAsync();
+        };
     }
+
+
 
     protected override void OnClosed(EventArgs e)
     {

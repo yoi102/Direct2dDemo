@@ -14,8 +14,6 @@ public class Direct2dContext : IDrawingContext, ICanvasContext
 
     public event EventHandler<double>? Rendered;
 
-    public event EventHandler? Initialized;
-
     public int Width => direct2DWrapper.Width;
     public int Height => direct2DWrapper.Height;
     public List<IDrawingElement> DrawingElements { get; } = new List<IDrawingElement>();
@@ -72,7 +70,6 @@ public class Direct2dContext : IDrawingContext, ICanvasContext
     {
         direct2DWrapper.SetTarget(hwnd, width, height);
         Render();
-        Initialized?.Invoke(this, EventArgs.Empty);
     }
 
     public void ClearData()

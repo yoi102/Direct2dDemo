@@ -17,7 +17,7 @@ public interface IDrawingContext : IDisposable
 
 public interface IDrawingGdiContext
 {
-    void Present(nint hdc);
+    void BitBlt(nint hdc);
 }
 
 public interface ICanvasContext

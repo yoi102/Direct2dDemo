@@ -105,7 +105,7 @@ internal sealed class GdiWrapper : IDisposable
         _isDrawing = false;
     }
 
-    public void Present(nint hdc)
+    public void BitBlt(nint hdc)
     {
         ThrowIfDisposed();
         EnsureTargetReady();
