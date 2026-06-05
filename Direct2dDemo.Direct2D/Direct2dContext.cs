@@ -77,6 +77,7 @@ public class Direct2dContext : IDrawingContext, ICanvasContext
 
     public void ClearData()
     {
+        direct2DWrapper.Context?.SetTransform(D2D_MATRIX_3X2_F.Identity());
         DrawingElements.Clear();
         direct2DWrapper.ClearCache();
     }
