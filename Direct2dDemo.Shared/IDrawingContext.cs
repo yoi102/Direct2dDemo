@@ -1,4 +1,6 @@
-﻿namespace Direct2dDemo.Shared;
+﻿using Direct2dDemo.Shared.Elements;
+
+namespace Direct2dDemo.Shared;
 
 public interface IDrawingContext : IDisposable
 {

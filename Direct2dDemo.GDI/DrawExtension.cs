@@ -1,4 +1,7 @@
-﻿using Direct2dDemo.Shared;
+﻿using Direct2dDemo.Shared.Elements;
+using Direct2dDemo.Shared.Elements.DrawingElements;
+using Direct2dDemo.Shared.Elements.GeometryElements;
+using Direct2dDemo.Shared.Enums;
 using System.Drawing;
 using Vanara.PInvoke;
 using static Vanara.PInvoke.Gdi32;
@@ -15,7 +18,7 @@ internal static class DrawExtension
                 Draw(textElement, gdiWrapper);
                 break;
 
-            case PolygonElement polygonElement:
+            case PolygonGeometryElement polygonElement:
                 Draw(polygonElement, gdiWrapper);
                 break;
 
@@ -69,13 +72,13 @@ internal static class DrawExtension
         }
     }
 
-    public static void Draw(PolygonElement element, GdiWrapper gdiWrapper)
+    public static void Draw(PolygonGeometryElement element, GdiWrapper gdiWrapper)
     {
         if (element.Points.Count < 3)
             return;
 
-        var hasFill = element.IsFilled && element.FillColor.A > 0;
-        var hasStroke = element.HasStroke && element.StrokeWidth > 0 && element.StrokeColor.A > 0;
+        var hasFill = element.FillStyle == FillStyle.Solid && element.FillColor.A > 0;
+        var hasStroke =  element.StrokeWidth > 0 && element.StrokeColor.A > 0;
 
         if (!hasFill && !hasStroke)
             return;
@@ -128,8 +131,8 @@ internal static class DrawExtension
         if (element.RadiusX <= 0 || element.RadiusY <= 0)
             return;
 
-        var hasFill = element.IsFilled && element.FillColor.A > 0;
-        var hasStroke = element.HasStroke && element.StrokeWidth > 0 && element.StrokeColor.A > 0;
+        var hasFill = element.FillStyle == Shared.Enums.FillStyle.Solid && element.FillColor.A > 0;
+        var hasStroke =  element.StrokeWidth > 0 && element.StrokeColor.A > 0;
 
         if (!hasFill && !hasStroke)
             return;
@@ -184,7 +187,6 @@ internal static class DrawExtension
     public static SafeHPEN CreatePen(Color color, float width)
     {
         var penWidth = Math.Max(1, (int)Math.Round(width));
-        var key = (color, penWidth);
 
         var pen = Gdi32.CreatePen(Gdi32.PenStyle.PS_SOLID, penWidth, ToColorRef(color));
         if (pen == nint.Zero)

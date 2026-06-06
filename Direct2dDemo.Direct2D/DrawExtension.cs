@@ -1,4 +1,7 @@
-﻿using Direct2dDemo.Shared;
+﻿using Direct2dDemo.Shared.Elements;
+using Direct2dDemo.Shared.Elements.DrawingElements;
+using Direct2dDemo.Shared.Elements.GeometryElements;
+using Direct2dDemo.Shared.Enums;
 using static Vanara.PInvoke.D2d1;
 using static Vanara.PInvoke.DXGI;
 
@@ -23,7 +26,7 @@ internal static class DrawExtension
                 Draw(textElement, direct2DWrapper);
                 break;
 
-            case PolygonElement polygonElement:
+            case PolygonGeometryElement polygonElement:
                 Draw(polygonElement, direct2DWrapper);
                 break;
 
@@ -85,7 +88,7 @@ internal static class DrawExtension
         }
     }
 
-    public static void Draw(PolygonElement element, Direct2DWrapper direct2DWrapper)
+    public static void Draw(PolygonGeometryElement element, Direct2DWrapper direct2DWrapper)
     {
         if (element.Points.Count < 3)
             return;
@@ -96,13 +99,13 @@ internal static class DrawExtension
         {
             var geometry = direct2DWrapper.GetOrCreatePathGeometry(element);
 
-            if (element.IsFilled && element.FillColor.A > 0)
+            if (element.FillStyle == FillStyle.Solid && element.FillColor.A > 0)
             {
                 var fillBrush = direct2DWrapper.GetOrCreateSolidColorBrush(element.FillColor);
                 context.FillGeometry(geometry, fillBrush);
             }
 
-            if (element.HasStroke && element.StrokeWidth > 0 && element.StrokeColor.A > 0)
+            if ( element.StrokeWidth > 0 && element.StrokeColor.A > 0)
             {
                 var strokeBrush = direct2DWrapper.GetOrCreateSolidColorBrush(element.StrokeColor);
                 context.DrawGeometry(geometry, strokeBrush, element.StrokeWidth);
@@ -130,13 +133,13 @@ internal static class DrawExtension
 
         try
         {
-            if (element.IsFilled && element.FillColor.A > 0)
+            if (element.FillStyle == Shared.Enums.FillStyle.Solid && element.FillColor.A > 0)
             {
                 var fillBrush = direct2DWrapper.GetOrCreateSolidColorBrush(element.FillColor);
                 context.FillEllipse(ellipse, fillBrush);
             }
 
-            if (element.HasStroke && element.StrokeWidth > 0 && element.StrokeColor.A > 0)
+            if ( element.StrokeWidth > 0 && element.StrokeColor.A > 0)
             {
                 var strokeBrush = direct2DWrapper.GetOrCreateSolidColorBrush(element.StrokeColor);
                 context.DrawEllipse(ellipse, strokeBrush, element.StrokeWidth);

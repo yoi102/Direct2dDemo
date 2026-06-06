@@ -2,8 +2,8 @@
 
 public class DeferAction : IDisposable
 {
-
     private Action _action;
+
     private DeferAction(Action action)
     {
         _action = action;

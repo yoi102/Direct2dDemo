@@ -1,4 +1,5 @@
 ﻿using Direct2dDemo.Shared;
+using Direct2dDemo.Shared.Elements;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using Vanara.PInvoke;

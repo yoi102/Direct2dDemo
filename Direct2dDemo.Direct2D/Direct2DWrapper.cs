@@ -1,14 +1,12 @@
-﻿using Direct2dDemo.Shared;
+﻿using Direct2dDemo.Shared.Elements.GeometryElements;
 using System.Diagnostics.CodeAnalysis;
 using System.Drawing;
 using System.Runtime.InteropServices;
 using Vanara.PInvoke;
 using static Vanara.PInvoke.D2d1;
 using static Vanara.PInvoke.D3D11;
-using static Vanara.PInvoke.DocumentTarget;
 using static Vanara.PInvoke.Dwrite;
 using static Vanara.PInvoke.DXGI;
-using static Vanara.PInvoke.WindowsCodecs;
 using D2D1_COLOR_F = Vanara.PInvoke.DXGI.D3DCOLORVALUE;
 
 namespace Direct2dDemo.Direct2D;
@@ -136,7 +134,7 @@ internal sealed class Direct2DWrapper : IDisposable
             bitmapOptions = D2D1_BITMAP_OPTIONS.D2D1_BITMAP_OPTIONS_TARGET
         };
 
- 
+
 
         var newBitmap = _d2dContext.CreateBitmap(
             pixelSize,
@@ -720,9 +718,9 @@ internal sealed class Direct2DWrapper : IDisposable
     private Dictionary<Color, ID2D1SolidColorBrush> _solidColorBrushCacahe = new();
 
     private readonly Dictionary<(string FontFamily, float FontSize), IDWriteTextFormat> _textFormatCache = new();
-    private readonly Dictionary<PolygonElement, ID2D1PathGeometry> _pathGeometryCache = new();
+    private readonly Dictionary<PolygonGeometryElement, ID2D1PathGeometry> _pathGeometryCache = new();
 
-    public ID2D1PathGeometry GetOrCreatePathGeometry(PolygonElement element)
+    public ID2D1PathGeometry GetOrCreatePathGeometry(PolygonGeometryElement element)
     {
         //not good to use PolygonElement as key directly, but for demo purpose it's fine.
         if (_pathGeometryCache.TryGetValue(element, out var cached))

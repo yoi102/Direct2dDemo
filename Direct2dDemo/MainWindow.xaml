@@ -24,32 +24,86 @@
 
                     <Grid Margin="5"
                           ColumnDefinitions="1*,2*">
-                        <TextBlock Text="Count:"
+                        <TextBlock Text="CountToAdd:"
                                    VerticalAlignment="Center"
                                    HorizontalAlignment="Center" />
                         <TextBox Grid.Column="1"
                                  VerticalAlignment="Center"
-                                 Text="{Binding AddCount}" />
+                                 Text="{Binding CountToAdd}" />
                     </Grid>
-                    <Grid Margin="5 0 5 5"
-                          ColumnDefinitions="*,*">
-                        <Button Content="AddEllipse"
-                                Command="{Binding AddEllipseCommand}"
-                                Margin="5"
-                                Width="110" />
-                        <Button Content="AddPolygon"
-                                Command="{Binding AddPolygonCommand}"
-                                Grid.Column="1"
-                                Margin="5"
-                                Width="110" />
-                    </Grid>
-                    <Grid Margin="5 0 5 5"
-                          ColumnDefinitions="*,*">
-                        <Button Content="AddText"
-                                Command="{Binding AddTextCommand}"
-                                Margin="5"
-                                Width="110" />
-                    </Grid>
+
+                    <GroupBox>
+                        <GroupBox.Header>
+                            <TextBlock Text="DirectDrawElements"
+                                       FontSize="20"
+                                       FontWeight="Black" />
+                        </GroupBox.Header>
+
+                        <StackPanel>
+                            <Grid Margin="5 0 5 5"
+                                  ColumnDefinitions="*,*">
+                                <Button Content="AddLine"
+                                        Command="{Binding AddLineCommand}"
+                                        Margin="5"
+                                        Width="110" />
+                                <Button Content="AddRectangle"
+                                        Command="{Binding AddRectangleCommand}"
+                                        Grid.Column="1"
+                                        Margin="5"
+                                        Width="110" />
+                            </Grid>
+                            <Grid Margin="5 0 5 5"
+                                  ColumnDefinitions="*,*">
+                                <Button Content="AddEllipse"
+                                        Command="{Binding AddEllipseCommand}"
+                                        Margin="5"
+                                        Width="110" />
+                                <Button Content="AddText"
+                                        Command="{Binding AddTextCommand}"
+                                        Grid.Column="1"
+                                        Margin="5"
+                                        Width="110" />
+                            </Grid>
+                        </StackPanel>
+                    </GroupBox>
+
+                    <GroupBox>
+                        <GroupBox.Header>
+                            <TextBlock Text="GeometryElements"
+                                       FontSize="20"
+                                       FontWeight="Black" />
+                        </GroupBox.Header>
+                        <StackPanel>
+                            <Grid Margin="5 0 5 5"
+                                  ColumnDefinitions="*,*">
+                                <!--<Button Content="AddLine"
+                                        Command="{Binding AddLineCommand}"
+                                        Margin="5"
+                                        Width="110" />-->
+                                <Button Content="AddRectangle"
+                                        Command="{Binding AddRectangleGeometryCommand}"
+                                        Grid.Column="1"
+                                        Margin="5"
+                                        Width="110" />
+                            </Grid>
+                            <Grid Margin="5 0 5 5"
+                                  ColumnDefinitions="*,*">
+                                <Button Content="AddEllipse"
+                                        Command="{Binding AddEllipseGeometryCommand}"
+                                        Margin="5"
+                                        Width="110" />
+                                <Button Content="AddPolygon"
+                                        Command="{Binding AddPolygonCommand}"
+                                        Grid.Column="1"
+                                        Margin="5"
+                                        Width="110" />
+                            </Grid>
+                        </StackPanel>
+                    </GroupBox>
+                </StackPanel>
+
+                <StackPanel Margin="0 40 0 0">
+
                     <Grid Margin="5 0 5 5"
                           ColumnDefinitions="*,*">
                         <Button Content="Clear"
@@ -72,9 +126,37 @@
                                 Width="110" />
                     </Grid>
                 </StackPanel>
+
                 <StackPanel Margin="0 90 0 0">
                     <Grid Margin="20 5 5 5"
-                          ColumnDefinitions="1.5*,2*">
+                          ColumnDefinitions="4*,2*">
+                        <TextBlock Text="Line:"
+                                   VerticalAlignment="Center"
+                                   HorizontalAlignment="Left" />
+                        <TextBlock Grid.Column="1"
+                                   VerticalAlignment="Center"
+                                   Text="{Binding LineCount}" />
+                    </Grid>
+                    <Grid Margin="20 5 5 5"
+                          ColumnDefinitions="4*,2*">
+                        <TextBlock Text="Rectangle:"
+                                   VerticalAlignment="Center"
+                                   HorizontalAlignment="Left" />
+                        <TextBlock Grid.Column="1"
+                                   VerticalAlignment="Center"
+                                   Text="{Binding RectangleCount}" />
+                    </Grid>
+                    <Grid Margin="20 5 5 5"
+                          ColumnDefinitions="4*,2*">
+                        <TextBlock Text="Rectangle Geometry:"
+                                   VerticalAlignment="Center"
+                                   HorizontalAlignment="Left" />
+                        <TextBlock Grid.Column="1"
+                                   VerticalAlignment="Center"
+                                   Text="{Binding RectangleGeometryCount}" />
+                    </Grid>
+                    <Grid Margin="20 5 5 5"
+                          ColumnDefinitions="4*,2*">
                         <TextBlock Text="Ellipse:"
                                    VerticalAlignment="Center"
                                    HorizontalAlignment="Left" />
@@ -83,7 +165,16 @@
                                    Text="{Binding EllipseCount}" />
                     </Grid>
                     <Grid Margin="20 5 5 5"
-                          ColumnDefinitions="1.5*,2*">
+                          ColumnDefinitions="4*,2*">
+                        <TextBlock Text="Ellipse Geometry:"
+                                   VerticalAlignment="Center"
+                                   HorizontalAlignment="Left" />
+                        <TextBlock Grid.Column="1"
+                                   VerticalAlignment="Center"
+                                   Text="{Binding EllipseGeometryCount}" />
+                    </Grid>
+                    <Grid Margin="20 5 5 5"
+                          ColumnDefinitions="4*,2*">
                         <TextBlock Text="Polygon:"
                                    VerticalAlignment="Center"
                                    HorizontalAlignment="Left" />
@@ -92,7 +183,7 @@
                                    Text="{Binding PolygonCount}" />
                     </Grid>
                     <Grid Margin="20 5 5 5"
-                          ColumnDefinitions="1.5*,2*">
+                          ColumnDefinitions="4*,2*">
                         <TextBlock Text="Text:"
                                    VerticalAlignment="Center"
                                    HorizontalAlignment="Left" />
