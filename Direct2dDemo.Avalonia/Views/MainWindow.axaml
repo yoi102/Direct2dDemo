@@ -27,7 +27,7 @@
                 IsVisible="{Binding Running}"
                 IsIndeterminate="True" />
             </Grid>
-            <Grid ColumnDefinitions="270,*"
+            <Grid ColumnDefinitions="360,*"
                   IsEnabled="{Binding Running, Converter={ cv:InvertBooleanConverter}}"
                   Grid.Row="1">
                 <StackPanel d:Background="Wheat"
@@ -44,47 +44,36 @@
                                      Text="{Binding CountToAdd}" />
                         </Grid>
 
-                        <GroupBox>
-                            <GroupBox.Header>
-                                <TextBlock Text="DirectDrawElements"
-                                           FontSize="20"
-                                           FontWeight="Black" />
-                            </GroupBox.Header>
-
+                        <GroupBox Margin="0 10 0 0" Header="DirectDrawElements">
                             <StackPanel>
-                                <Grid Margin="5 0 5 5"
+                                <Grid Margin="0 0 5 0"
                                       ColumnDefinitions="*,*">
                                     <Button Content="AddLine"
                                             Command="{Binding AddLineCommand}"
                                             Margin="5"
-                                            Width="110" />
+                                            Width="140" />
                                     <Button Content="AddRectangle"
                                             Command="{Binding AddRectangleCommand}"
-                                            Grid.Column="1"
                                             Margin="5"
-                                            Width="110" />
+                                            Grid.Column="1"
+                                            Width="140" />
                                 </Grid>
-                                <Grid Margin="5 0 5 5"
+                                <Grid Margin="0 0 5 0"
                                       ColumnDefinitions="*,*">
                                     <Button Content="AddEllipse"
                                             Command="{Binding AddEllipseCommand}"
                                             Margin="5"
-                                            Width="110" />
+                                            Width="140" />
                                     <Button Content="AddText"
                                             Command="{Binding AddTextCommand}"
-                                            Grid.Column="1"
                                             Margin="5"
-                                            Width="110" />
+                                            Grid.Column="1"
+                                            Width="140" />
                                 </Grid>
                             </StackPanel>
                         </GroupBox>
 
-                        <GroupBox>
-                            <GroupBox.Header>
-                                <TextBlock Text="GeometryElements"
-                                           FontSize="20"
-                                           FontWeight="Black" />
-                            </GroupBox.Header>
+                        <GroupBox Margin="0 10 0 0" Header="GeometryElements">
                             <StackPanel>
                                 <Grid Margin="5 0 5 5"
                                       ColumnDefinitions="*,*">
@@ -96,19 +85,19 @@
                                             Command="{Binding AddRectangleGeometryCommand}"
                                             Grid.Column="1"
                                             Margin="5"
-                                            Width="110" />
+                                            Width="140" />
                                 </Grid>
                                 <Grid Margin="5 0 5 5"
                                       ColumnDefinitions="*,*">
                                     <Button Content="AddEllipse"
                                             Command="{Binding AddEllipseGeometryCommand}"
                                             Margin="5"
-                                            Width="110" />
+                                            Width="140" />
                                     <Button Content="AddPolygon"
                                             Command="{Binding AddPolygonCommand}"
                                             Grid.Column="1"
                                             Margin="5"
-                                            Width="110" />
+                                            Width="140" />
                                 </Grid>
                             </StackPanel>
                         </GroupBox>
