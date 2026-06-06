@@ -47,7 +47,7 @@ public sealed class Win32DrawingHost : NativeControlHost
             0,
             "STATIC",
             "",
-            WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | WS_CLIPCHILDREN,
+            WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | WS_CLIPCHILDREN | SS_NOTIFY,
             0,
             0,
             1,
@@ -165,10 +165,6 @@ public sealed class Win32DrawingHost : NativeControlHost
                             canvasContext.Move(deltaX, deltaY);
                         }
 
-                        // 建议更新，否则每次都是从右键按下点算总偏移，容易越拖越快
-                        _rightButtonX = x;
-                        _rightButtonY = y;
-
                         InvalidateRect(hwnd, IntPtr.Zero, false);
                     }
 
@@ -255,7 +251,7 @@ public sealed class Win32DrawingHost : NativeControlHost
     private const int WS_VISIBLE = 0x10000000;
     private const int WS_CLIPSIBLINGS = 0x04000000;
     private const int WS_CLIPCHILDREN = 0x02000000;
-
+    private const int SS_NOTIFY = 0x0100;
     private const int GWLP_WNDPROC = -4;
 
     private const uint WM_SIZE = 0x0005;
