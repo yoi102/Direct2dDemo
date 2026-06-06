@@ -8,11 +8,7 @@ using static Vanara.PInvoke.DXGI;
 
 namespace Direct2dDemo.Direct2D;
 
-// Resource!!!!!!
-// CreateSolidColorBrush
-// CreatePathGeometry
-// CreateTextFormat
-// 各10_000 有cache 时，372ms, 无cache时，441ms
+// DrawLine！！！！！当CapStyle为CapStyle.Round 且DashStyle不为Solid  时候、会非常慢 。不GDI绘制还要慢！！！！
 
 internal static class DrawExtension
 {
