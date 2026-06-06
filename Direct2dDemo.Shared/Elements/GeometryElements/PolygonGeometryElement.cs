@@ -15,4 +15,8 @@ public sealed record PolygonGeometryElement : IGeometryElement
     public HatchStyle? HatchStyle { get; init; }
 
     public IReadOnlyList<PointF> Points { get; init; } = Array.Empty<PointF>();
+
+    public DashStyle DashStyle { get; init; } = DashStyle.Solid;
+    public CapStyle CapStyle { get; init; } = CapStyle.Flat;
+    public LineJoin LineJoin { get; init; } = LineJoin.Miter;
 }

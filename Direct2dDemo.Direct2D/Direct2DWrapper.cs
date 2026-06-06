@@ -908,7 +908,7 @@ internal sealed class Direct2DWrapper : IDisposable
         };
     }
 
-    public ID2D1StrokeStyle GetOrCreateStrokeStyle(CapStyle capStyle, DashStyle dashStyle)
+    public ID2D1StrokeStyle GetOrCreateStrokeStyle(CapStyle capStyle, DashStyle dashStyle, LineJoin lineJoin = LineJoin.Miter)
     {
         if (_d2dFactory is null)
             throw new InvalidOperationException("Direct2D factory is not created.");
@@ -919,6 +919,7 @@ internal sealed class Direct2DWrapper : IDisposable
             dashCap = (D2D1_CAP_STYLE)capStyle,
             miterLimit = 10.0f,
             dashStyle = (D2D1_DASH_STYLE)dashStyle,
+            lineJoin = (D2D1_LINE_JOIN)lineJoin,
             dashOffset = 0.0f
         };
 

@@ -63,7 +63,8 @@ internal static class DrawExtension
                 element.StrokeColor,
                 element.StrokeWidth,
                 element.DashStyle,
-                element.CapStyle);
+                element.CapStyle,
+                element.LineJoin);
 
             var oldPen = Gdi32.SelectObject(hdc, createdPen);
 
@@ -106,7 +107,11 @@ internal static class DrawExtension
             element.FillColor,
             element.HatchStyle,
             element.StrokeColor,
-            element.StrokeWidth);
+            element.StrokeColor,
+            element.StrokeWidth,
+            element.DashStyle,
+            element.CapStyle,
+            element.LineJoin);
     }
 
     public static void Draw(EllipseGeometryElement element, GdiWrapper gdiWrapper)
@@ -129,6 +134,9 @@ internal static class DrawExtension
             element.StrokeColor,
             element.StrokeColor,
             element.StrokeWidth,
+            element.DashStyle,
+            element.CapStyle,
+            element.LineJoin,
             () => Gdi32.Ellipse(hdc, left, top, right, bottom));
     }
 
@@ -146,7 +154,11 @@ internal static class DrawExtension
             element.FillColor,
             element.HatchStyle,
             element.StrokeColor,
-            element.StrokeWidth);
+            element.StrokeColor,
+            element.StrokeWidth,
+            element.DashStyle,
+            element.CapStyle,
+            element.LineJoin);
     }
 
     public static void Draw(TextElement element, GdiWrapper gdiWrapper)
@@ -219,6 +231,9 @@ internal static class DrawExtension
             element.StrokeColor,
             element.StrokeColor,
             element.StrokeWidth,
+            element.DashStyle,
+            element.CapStyle,
+            element.LineJoin,
             () => Gdi32.Polygon(hdc, points, points.Length));
     }
 
@@ -242,6 +257,9 @@ internal static class DrawExtension
             element.StrokeColor,
             element.StrokeColor,
             element.StrokeWidth,
+            element.DashStyle,
+            element.CapStyle,
+            element.LineJoin,
             () => Gdi32.Ellipse(hdc, left, top, right, bottom));
     }
 
@@ -253,8 +271,12 @@ internal static class DrawExtension
         FillStyle fillStyle,
         Color fillColor,
         SharedHatchStyle? hatchStyle,
+        Color hatchColor,
         Color strokeColor,
-        float strokeWidth)
+        float strokeWidth,
+        DashStyle dashStyle,
+        CapStyle capStyle,
+        LineJoin lineJoin)
     {
         var left = ToInt(topLeft.X);
         var top = ToInt(topLeft.Y);
@@ -268,9 +290,12 @@ internal static class DrawExtension
             fillStyle,
             fillColor,
             hatchStyle,
-            strokeColor,
+            hatchColor,
             strokeColor,
             strokeWidth,
+            dashStyle,
+            capStyle,
+            lineJoin,
             () => Gdi32.Rectangle(hdc, left, top, right, bottom));
     }
 
@@ -282,6 +307,9 @@ internal static class DrawExtension
         Color hatchColor,
         Color strokeColor,
         float strokeWidth,
+        DashStyle dashStyle,
+        CapStyle capStyle,
+        LineJoin lineJoin,
         Action drawAction)
     {
         var hasFill = HasFill(fillStyle, fillColor, hatchStyle, hatchColor);
@@ -300,13 +328,20 @@ internal static class DrawExtension
             : Gdi32.GetStockObject(StockObjectType.HOLLOW_BRUSH);
 
         var pen = hasStroke
-            ? createdPen = CreatePen(strokeColor, strokeWidth)
+            ? createdPen = CreatePen(strokeColor, strokeWidth, dashStyle, capStyle, lineJoin)
             : Gdi32.GetStockObject(StockObjectType.NULL_PEN);
 
         var oldBrush = Gdi32.SelectObject(hdc, brush);
         var oldPen = Gdi32.SelectObject(hdc, pen);
 
-        var needBkMode = hasFill && fillStyle == FillStyle.Hatch;
+        // GDI HatchBrush: hatchColor is brush color; fillColor is background color.
+        // 如果 hatchColor 透明但 fillColor 不透明，这里会退化为 SolidBrush，不需要改 BkMode。
+        var needBkMode =
+            hasFill &&
+            fillStyle == FillStyle.Hatch &&
+            hatchStyle.HasValue &&
+            hatchColor.A > 0;
+
         var oldBkMode = default(BackgroundMode);
         var oldBkColor = new COLORREF();
 
@@ -358,7 +393,7 @@ internal static class DrawExtension
                 fillColor.A > 0,
 
             FillStyle.Hatch =>
-                hatchStyle.HasValue && hatchColor.A > 0,
+                hatchStyle.HasValue && (fillColor.A > 0 || hatchColor.A > 0),
 
             _ => false
         };
@@ -375,8 +410,11 @@ internal static class DrawExtension
             FillStyle.Solid =>
                 CreateSolidBrush(fillColor),
 
-            FillStyle.Hatch when hatchStyle.HasValue =>
+            FillStyle.Hatch when hatchStyle.HasValue && hatchColor.A > 0 =>
                 CreateHatchBrush(hatchStyle.Value, hatchColor),
+
+            FillStyle.Hatch when hatchStyle.HasValue && fillColor.A > 0 =>
+                CreateSolidBrush(fillColor),
 
             _ => throw new ArgumentOutOfRangeException(nameof(fillStyle))
         };
@@ -408,7 +446,7 @@ internal static class DrawExtension
 
     public static SafeHPEN CreatePen(Color color, float width)
     {
-        return CreatePen(color, width, DashStyle.Solid, CapStyle.Flat);
+        return CreatePen(color, width, DashStyle.Solid, CapStyle.Flat, LineJoin.Miter);
     }
 
     public static SafeHPEN CreatePen(
@@ -417,30 +455,118 @@ internal static class DrawExtension
         DashStyle dashStyle,
         CapStyle capStyle)
     {
+        return CreatePen(color, width, dashStyle, capStyle, LineJoin.Miter);
+    }
+
+    public static SafeHPEN CreatePen(
+        Color color,
+        float width,
+        DashStyle dashStyle,
+        CapStyle capStyle,
+        LineJoin lineJoin)
+    {
         var penWidth = Math.Max(1, (int)Math.Round(width));
-        var penStyle = ToGdiPenStyle(dashStyle);
 
-        var pen = Gdi32.CreatePen(
-            penStyle,
-            penWidth,
-            ToColorRef(color));
+        // CreatePen 基本不能表达 RoundCap / LineJoin。
+        // 这里统一用 ExtCreatePen + PS_GEOMETRIC 来支持 CapStyle / LineJoin。
+        var userStyle = CreateGdiUserStyle(dashStyle, penWidth);
+        var hasUserStyle = userStyle.Length > 0;
 
-        if (pen == nint.Zero)
-            throw new InvalidOperationException("CreatePen failed.");
+        var penStyle =
+            (uint)Gdi32.PenType.PS_GEOMETRIC |
+            (hasUserStyle
+                ? (uint)Gdi32.PenStyle.PS_USERSTYLE
+                : (uint)Gdi32.PenStyle.PS_SOLID) |
+            (uint)ToGdiEndCapStyle(capStyle) |
+            (uint)ToGdiLineJoinStyle(lineJoin);
+
+        var logBrush = new LOGBRUSH
+        {
+            lbStyle = BrushStyle.BS_SOLID,
+            lbColor = unchecked((uint)ToColorRef(color)),
+            lbHatch = IntPtr.Zero
+        };
+
+        var pen = Gdi32.ExtCreatePen(
+           penStyle,
+           (uint)penWidth,
+           logBrush,
+           hasUserStyle ? (uint)userStyle.Length : 0,
+           hasUserStyle ? userStyle : null);
+
+        if (pen is null || pen.IsInvalid)
+            throw new InvalidOperationException("ExtCreatePen failed.");
 
         return pen;
     }
 
-    private static Gdi32.PenStyle ToGdiPenStyle(DashStyle dashStyle)
+    private static uint[] CreateGdiUserStyle(DashStyle dashStyle, int penWidth)
     {
+        var unit = (uint)Math.Max(1, penWidth);
+
         return dashStyle switch
         {
-            DashStyle.Solid => Gdi32.PenStyle.PS_SOLID,
-            DashStyle.Dash => Gdi32.PenStyle.PS_DASH,
-            DashStyle.Dot => Gdi32.PenStyle.PS_DOT,
-            DashStyle.DashDot => Gdi32.PenStyle.PS_DASHDOT,
-            DashStyle.DashDotDot => Gdi32.PenStyle.PS_DASHDOTDOT,
-            _ => Gdi32.PenStyle.PS_SOLID
+            DashStyle.Solid =>
+                Array.Empty<uint>(),
+
+            DashStyle.Dash =>
+                new[] { 4u * unit, 2u * unit },
+
+            DashStyle.Dot =>
+                new[] { 1u * unit, 2u * unit },
+
+            DashStyle.DashDot =>
+                new[] { 4u * unit, 2u * unit, 1u * unit, 2u * unit },
+
+            DashStyle.DashDotDot =>
+                new[] { 4u * unit, 2u * unit, 1u * unit, 2u * unit, 1u * unit, 2u * unit },
+
+            _ =>
+                Array.Empty<uint>()
+        };
+    }
+
+    private static Gdi32.ExtPenStyle ToGdiEndCapStyle(CapStyle capStyle)
+    {
+        return capStyle switch
+        {
+            CapStyle.Flat =>
+                Gdi32.ExtPenStyle.PS_ENDCAP_FLAT,
+
+            CapStyle.Square =>
+                Gdi32.ExtPenStyle.PS_ENDCAP_SQUARE,
+
+            CapStyle.Round =>
+                Gdi32.ExtPenStyle.PS_ENDCAP_ROUND,
+
+            //// GDI 没有 TriangleCap。这里退化为 Square，至少保持“向端点外延伸”的行为。
+            //CapStyle.Triangle =>
+            //    Gdi32.ExtPenStyle.PS_ENDCAP_SQUARE,
+
+            _ =>
+                Gdi32.ExtPenStyle.PS_ENDCAP_FLAT
+        };
+    }
+
+    private static Gdi32.ExtPenStyle ToGdiLineJoinStyle(LineJoin lineJoin)
+    {
+        return lineJoin switch
+        {
+            LineJoin.Miter =>
+                Gdi32.ExtPenStyle.PS_JOIN_MITER,
+
+            LineJoin.Bevel =>
+                Gdi32.ExtPenStyle.PS_JOIN_BEVEL,
+
+            LineJoin.Round =>
+                Gdi32.ExtPenStyle.PS_JOIN_ROUND,
+
+            //// GDI 没有 MiterOrBevel。这里先映射为 Miter。
+            //LineJoin.MiterOrBevel =>
+            //    Gdi32.ExtPenStyle.PS_JOIN_MITER,
+
+            _ =>
+                Gdi32.ExtPenStyle.PS_JOIN_MITER
         };
     }
 

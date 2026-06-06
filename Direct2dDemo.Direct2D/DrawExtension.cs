@@ -3,6 +3,7 @@ using Direct2dDemo.Shared.Elements.DrawingElements;
 using Direct2dDemo.Shared.Elements.GeometryElements;
 using Direct2dDemo.Shared.Enums;
 using System.Drawing;
+using System.Xml.Linq;
 using static Vanara.PInvoke.D2d1;
 using static Vanara.PInvoke.DXGI;
 
@@ -64,7 +65,8 @@ internal static class DrawExtension
         var strokeBrush = direct2DWrapper.GetOrCreateSolidColorBrush(element.StrokeColor);
         var strokeStyle = direct2DWrapper.GetOrCreateStrokeStyle(
             element.CapStyle,
-            element.DashStyle);
+            element.DashStyle,
+            element.LineJoin);
 
         context.DrawLine(
             ToD2DPoint(element.StartPoint),
@@ -97,6 +99,9 @@ internal static class DrawExtension
             geometry,
             element.StrokeColor,
             element.StrokeWidth,
+            element.CapStyle,
+            element.DashStyle,
+            element.LineJoin,
             direct2DWrapper);
     }
 
@@ -123,6 +128,9 @@ internal static class DrawExtension
             geometry,
             element.StrokeColor,
             element.StrokeWidth,
+            element.CapStyle,
+            element.DashStyle,
+            element.LineJoin,
             direct2DWrapper);
     }
 
@@ -198,6 +206,9 @@ internal static class DrawExtension
             geometry,
             element.StrokeColor,
             element.StrokeWidth,
+            element.CapStyle,
+            element.DashStyle,
+            element.LineJoin,
             direct2DWrapper);
     }
 
@@ -228,7 +239,10 @@ internal static class DrawExtension
         if (element.StrokeWidth > 0 && element.StrokeColor.A > 0)
         {
             var strokeBrush = direct2DWrapper.GetOrCreateSolidColorBrush(element.StrokeColor);
-            context.DrawEllipse(ellipse, strokeBrush, element.StrokeWidth);
+            var strokeStyle = direct2DWrapper.GetOrCreateStrokeStyle(element.CapStyle,
+                                                                       element.DashStyle,
+                                                                       element.LineJoin);
+            context.DrawEllipse(ellipse, strokeBrush, element.StrokeWidth, strokeStyle);
         }
     }
 
@@ -260,7 +274,10 @@ internal static class DrawExtension
         if (element.StrokeWidth > 0 && element.StrokeColor.A > 0)
         {
             var strokeBrush = direct2DWrapper.GetOrCreateSolidColorBrush(element.StrokeColor);
-            context.DrawRectangle(rectangle, strokeBrush, element.StrokeWidth);
+            var strokeStyle = direct2DWrapper.GetOrCreateStrokeStyle(element.CapStyle,
+                                                                                   element.DashStyle,
+                                                                                   element.LineJoin);
+            context.DrawRectangle(rectangle, strokeBrush, element.StrokeWidth, strokeStyle);
         }
     }
 
@@ -406,6 +423,9 @@ internal static class DrawExtension
         ID2D1Geometry geometry,
         Color strokeColor,
         float strokeWidth,
+        CapStyle capStyle,
+        DashStyle dashStyle,
+        LineJoin lineJoin,
         Direct2DWrapper direct2DWrapper)
     {
         var context = direct2DWrapper.Context;
@@ -419,7 +439,13 @@ internal static class DrawExtension
             return;
 
         var strokeBrush = direct2DWrapper.GetOrCreateSolidColorBrush(strokeColor);
-        context.DrawGeometry(geometry, strokeBrush, strokeWidth);
+
+        var strokeStyle = direct2DWrapper.GetOrCreateStrokeStyle(
+                                                                         capStyle,
+                                                                         dashStyle,
+                                                                         lineJoin);
+
+        context.DrawGeometry(geometry, strokeBrush, strokeWidth,strokeStyle);
     }
 
     private static D2D_POINT_2F ToD2DPoint(PointF point)

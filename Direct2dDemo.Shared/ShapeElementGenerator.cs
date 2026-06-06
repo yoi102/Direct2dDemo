@@ -86,7 +86,11 @@ public class ShapeElementGenerator
             FillColor = e.FillColor,
             HatchStyle = e.HatchStyle,
             StrokeColor = e.StrokeColor,
-            StrokeWidth = e.StrokeWidth
+            StrokeWidth = e.StrokeWidth,
+            CapStyle = e.CapStyle,
+            DashStyle = e.DashStyle,
+            LineJoin = e.LineJoin,
+
         }).ToList();
     }
 
@@ -129,7 +133,10 @@ public class ShapeElementGenerator
                         : null,
 
                     StrokeColor = RandomColor(),
-                    StrokeWidth = NextFloat(1.0f, 4.0f)
+                    StrokeWidth = NextFloat(1.0f, 4.0f),
+                    DashStyle = RandomDashStyle(),
+                    CapStyle = RandomCapStyle(),
+                    LineJoin = RandomLineJoin()
                 };
 
                 result.Add(ellipse);
@@ -203,7 +210,10 @@ public class ShapeElementGenerator
                         : null,
 
                     StrokeColor = RandomColor(),
-                    StrokeWidth = NextFloat(1.0f, 4.0f)
+                    StrokeWidth = NextFloat(1.0f, 4.0f),
+                    DashStyle = RandomDashStyle(),
+                    CapStyle = RandomCapStyle(),
+                    LineJoin = RandomLineJoin()
                 };
 
                 result.Add(polygon);
@@ -232,10 +242,9 @@ public class ShapeElementGenerator
                 {
                     StartPoint = new PointF(x0, y0),
                     EndPoint = new PointF(x1, y1),
-
                     DashStyle = RandomDashStyle(),
                     CapStyle = RandomCapStyle(),
-
+                    LineJoin = RandomLineJoin(),
                     StrokeWidth = NextFloat(1.0f, 4.0f),
                     StrokeColor = RandomColor()
                 };
@@ -261,7 +270,10 @@ public class ShapeElementGenerator
             FillColor = r.FillColor,
             HatchStyle = r.HatchStyle,
             StrokeColor = r.StrokeColor,
-            StrokeWidth = r.StrokeWidth
+            StrokeWidth = r.StrokeWidth,
+            CapStyle = r.CapStyle,
+            DashStyle = r.DashStyle,
+            LineJoin = r.LineJoin,
         }).ToList();
     }
 
@@ -310,7 +322,10 @@ public class ShapeElementGenerator
                         : null,
 
                     StrokeColor = RandomColor(),
-                    StrokeWidth = NextFloat(1.0f, 4.0f)
+                    StrokeWidth = NextFloat(1.0f, 4.0f),
+                    DashStyle = RandomDashStyle(),
+                    CapStyle = RandomCapStyle(),
+                    LineJoin = RandomLineJoin()
                 };
 
                 result.Add(rectangle);
@@ -415,6 +430,8 @@ public class ShapeElementGenerator
 
     private static DashStyle RandomDashStyle()
     {
+        //return DashStyle.Solid;
+
         return NextInt(0, 5) switch
         {
             0 => DashStyle.Solid,
@@ -425,8 +442,20 @@ public class ShapeElementGenerator
         };
     }
 
+    private static LineJoin RandomLineJoin()
+    {
+        return NextInt(0, 3) switch
+        {
+            0 => LineJoin.Miter,
+            1 => LineJoin.Round,
+            _ => LineJoin.Bevel,
+        };
+    }
+
     private static CapStyle RandomCapStyle()
     {
+        //return CapStyle.Flat;
+
         return NextInt(0, 3) switch
         {
             0 => CapStyle.Flat,

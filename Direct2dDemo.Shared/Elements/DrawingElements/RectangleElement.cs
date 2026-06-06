@@ -13,4 +13,7 @@ public sealed record RectangleElement : IDirectDrawElement
     public PointF TopLeft { get; init; }
     public float Width { get; init; }
     public float Height { get; init; }
+    public DashStyle DashStyle { get; init; } = DashStyle.Solid;
+    public CapStyle CapStyle { get; init; } = CapStyle.Flat;
+    public LineJoin LineJoin { get; init; } = LineJoin.Miter;
 }
