@@ -5,9 +5,9 @@ using Direct2dDemo.GDI;
 using Direct2dDemo.Shared;
 using System.Diagnostics;
 
-namespace Direct2dDemo;
+namespace Direct2dDemo.ViewModels;
 
-internal partial class MainWindowViewModel : ObservableObject, IDisposable
+public partial class MainWindowViewModel : ObservableObject, IDisposable
 {
     public MainWindowViewModel()
     {
@@ -21,7 +21,7 @@ internal partial class MainWindowViewModel : ObservableObject, IDisposable
         };
     }
 
-    internal async Task InitAsync()
+    public async Task InitAsync()
     {
         Running = true;
         using var _ = DeferAction.Create(() => Running = false);
@@ -69,7 +69,6 @@ internal partial class MainWindowViewModel : ObservableObject, IDisposable
         Direct2dContext.DrawingElements.AddRange(text_elements);
         GdiContext.DrawingElements.AddRange(text_elements);
         TextCount += text_elements.Count;
-
 
         stopwatch.Stop();
         this.DataGenerationTime = stopwatch.ElapsedMilliseconds;

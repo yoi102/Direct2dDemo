@@ -1,0 +1,245 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Direct2dDemo.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:yr="https://github.com/yoi102/xaml/controls"
+        xmlns:cv="clr-namespace:Direct2dDemo.Avalonia.Converters"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        x:Class="Direct2dDemo.Avalonia.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Icon="/Assets/avalonia-logo.ico"
+        Title="Direct2dDemo.Avalonia"
+        Height="1000"
+        Width="1200">
+
+    <Design.DataContext>
+        <!--  This only sets the DataContext for the previewer in an IDE,
+        to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
+        <vm:MainWindowViewModel/>
+    </Design.DataContext>
+
+
+    <Grid>
+        <Grid RowDefinitions="auto,*">
+            <ProgressBar Margin="3"
+                         IsVisible="{Binding Running}"
+                         IsIndeterminate="True" />
+            <Grid ColumnDefinitions="270,*"
+                  IsEnabled="{Binding Running, Converter={ cv:InvertBooleanConverter}}"
+                  Grid.Row="1">
+                <StackPanel d:Background="Wheat"
+                            Margin="10">
+                    <StackPanel Margin="0 10 0 0">
+
+                        <Grid Margin="5"
+                              ColumnDefinitions="1.4*,2*">
+                            <TextBlock Text="CountToAdd:"
+                                       VerticalAlignment="Center"
+                                       HorizontalAlignment="Center" />
+                            <TextBox Grid.Column="1"
+                                     VerticalAlignment="Center"
+                                     Text="{Binding CountToAdd}" />
+                        </Grid>
+
+                        <GroupBox>
+                            <GroupBox.Header>
+                                <TextBlock Text="DirectDrawElements"
+                                           FontSize="20"
+                                           FontWeight="Black" />
+                            </GroupBox.Header>
+
+                            <StackPanel>
+                                <Grid Margin="5 0 5 5"
+                                      ColumnDefinitions="*,*">
+                                    <Button Content="AddLine"
+                                            Command="{Binding AddLineCommand}"
+                                            Margin="5"
+                                            Width="110" />
+                                    <Button Content="AddRectangle"
+                                            Command="{Binding AddRectangleCommand}"
+                                            Grid.Column="1"
+                                            Margin="5"
+                                            Width="110" />
+                                </Grid>
+                                <Grid Margin="5 0 5 5"
+                                      ColumnDefinitions="*,*">
+                                    <Button Content="AddEllipse"
+                                            Command="{Binding AddEllipseCommand}"
+                                            Margin="5"
+                                            Width="110" />
+                                    <Button Content="AddText"
+                                            Command="{Binding AddTextCommand}"
+                                            Grid.Column="1"
+                                            Margin="5"
+                                            Width="110" />
+                                </Grid>
+                            </StackPanel>
+                        </GroupBox>
+
+                        <GroupBox>
+                            <GroupBox.Header>
+                                <TextBlock Text="GeometryElements"
+                                           FontSize="20"
+                                           FontWeight="Black" />
+                            </GroupBox.Header>
+                            <StackPanel>
+                                <Grid Margin="5 0 5 5"
+                                      ColumnDefinitions="*,*">
+                                    <!--<Button Content="AddLine"
+                                    Command="{Binding AddLineCommand}"
+                                    Margin="5"
+                                    Width="110" />-->
+                                    <Button Content="AddRectangle"
+                                            Command="{Binding AddRectangleGeometryCommand}"
+                                            Grid.Column="1"
+                                            Margin="5"
+                                            Width="110" />
+                                </Grid>
+                                <Grid Margin="5 0 5 5"
+                                      ColumnDefinitions="*,*">
+                                    <Button Content="AddEllipse"
+                                            Command="{Binding AddEllipseGeometryCommand}"
+                                            Margin="5"
+                                            Width="110" />
+                                    <Button Content="AddPolygon"
+                                            Command="{Binding AddPolygonCommand}"
+                                            Grid.Column="1"
+                                            Margin="5"
+                                            Width="110" />
+                                </Grid>
+                            </StackPanel>
+                        </GroupBox>
+                    </StackPanel>
+
+                    <StackPanel Margin="0 40 0 0">
+
+                        <Grid Margin="5 0 5 5"
+                              ColumnDefinitions="*,*">
+                            <Button Content="Clear"
+                                    Command="{Binding ClearCommand}"
+                                    Margin="5"
+                                    Width="110" />
+                            <Button Content="Refresh"
+                                    Command="{Binding RefreshCommand}"
+                                    Grid.Column="1"
+                                    Margin="5"
+                                    Width="110" />
+                        </Grid>
+                        <Grid Margin="5 0 5 5"
+                              ColumnDefinitions="*,*">
+                            <Button Content="Export to PDF"
+                                    IsEnabled="False"
+                                    Command="{Binding ExportToPdfCommand}"
+                                    Margin="5"
+                                    Width="110" />
+                        </Grid>
+                    </StackPanel>
+
+                    <StackPanel Margin="0 90 0 0">
+                        <Grid Margin="20 5 5 5"
+                              ColumnDefinitions="4*,2*">
+                            <TextBlock Text="Line:"
+                                       VerticalAlignment="Center"
+                                       HorizontalAlignment="Left" />
+                            <TextBlock Grid.Column="1"
+                                       VerticalAlignment="Center"
+                                       Text="{Binding LineCount}" />
+                        </Grid>
+                        <Grid Margin="20 5 5 5"
+                              ColumnDefinitions="4*,2*">
+                            <TextBlock Text="Rectangle:"
+                                       VerticalAlignment="Center"
+                                       HorizontalAlignment="Left" />
+                            <TextBlock Grid.Column="1"
+                                       VerticalAlignment="Center"
+                                       Text="{Binding RectangleCount}" />
+                        </Grid>
+                        <Grid Margin="20 5 5 5"
+                              ColumnDefinitions="4*,2*">
+                            <TextBlock Text="Rectangle Geometry:"
+                                       VerticalAlignment="Center"
+                                       HorizontalAlignment="Left" />
+                            <TextBlock Grid.Column="1"
+                                       VerticalAlignment="Center"
+                                       Text="{Binding RectangleGeometryCount}" />
+                        </Grid>
+                        <Grid Margin="20 5 5 5"
+                              ColumnDefinitions="4*,2*">
+                            <TextBlock Text="Ellipse:"
+                                       VerticalAlignment="Center"
+                                       HorizontalAlignment="Left" />
+                            <TextBlock Grid.Column="1"
+                                       VerticalAlignment="Center"
+                                       Text="{Binding EllipseCount}" />
+                        </Grid>
+                        <Grid Margin="20 5 5 5"
+                              ColumnDefinitions="4*,2*">
+                            <TextBlock Text="Ellipse Geometry:"
+                                       VerticalAlignment="Center"
+                                       HorizontalAlignment="Left" />
+                            <TextBlock Grid.Column="1"
+                                       VerticalAlignment="Center"
+                                       Text="{Binding EllipseGeometryCount}" />
+                        </Grid>
+                        <Grid Margin="20 5 5 5"
+                              ColumnDefinitions="4*,2*">
+                            <TextBlock Text="Polygon:"
+                                       VerticalAlignment="Center"
+                                       HorizontalAlignment="Left" />
+                            <TextBlock Grid.Column="1"
+                                       VerticalAlignment="Center"
+                                       Text="{Binding PolygonCount}" />
+                        </Grid>
+                        <Grid Margin="20 5 5 5"
+                              ColumnDefinitions="4*,2*">
+                            <TextBlock Text="Text:"
+                                       VerticalAlignment="Center"
+                                       HorizontalAlignment="Left" />
+                            <TextBlock Grid.Column="1"
+                                       VerticalAlignment="Center"
+                                       Text="{Binding TextCount}" />
+                        </Grid>
+                    </StackPanel>
+                </StackPanel>
+                <Border  Grid.Column="1"
+                         d:Background="Yellow">
+                    <Grid RowDefinitions="*,*,auto">
+                        <yr:HwndHost Margin="3"
+                                     DrawingContext="{Binding Direct2dContext}" />
+                        <yr:HwndHost Margin="3"
+                                     Grid.Row="1"
+                                     DrawingContext="{Binding GdiContext}" />
+
+                        <StackPanel Grid.Row="2"
+                                    Orientation="Horizontal"
+                                    HorizontalAlignment="Right">
+                            <TextBlock Text="Data generation time :"
+                                       Margin="0 0 5 0" />
+                            <TextBlock Text="{Binding DataGenerationTime}"
+                                       Margin="0 0 5 0" />
+                            <TextBlock Text="ms"
+                                       Margin="0 0 20 0" />
+                            <TextBlock Text="Direct2D Rendering time :"
+                                       Margin="0 0 5 0" />
+                            <TextBlock Text="{Binding Direct2dRenderingTime}"
+                                       Margin="0 0 5 0" />
+                            <TextBlock Text="ms"
+                                       Margin="0 0 20 0" />
+                            <TextBlock Text="GDI Rendering time :"
+                                       Margin="0 0 5 0" />
+                            <TextBlock Text="{Binding GdiRenderingTime}"
+                                       Margin="0 0 5 0" />
+                            <TextBlock Text="ms"
+                                       Margin="0 0 20 0" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Grid>
+
+    </Grid>
+
+
+
+</Window>

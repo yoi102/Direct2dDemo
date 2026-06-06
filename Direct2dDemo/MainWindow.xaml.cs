@@ -1,4 +1,5 @@
 ﻿using System.Windows;
+using Direct2dDemo.ViewModels;
 
 namespace Direct2dDemo;
 
