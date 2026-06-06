@@ -6,5 +6,5 @@ Direct2D 与 GDI 在渲染效率、刷新耗时以及整体流畅度方面的差
 
 
 
+<img width="1186" height="993" alt="image" src="https://github.com/user-attachments/assets/f00a2bdb-33c8-409b-b94d-ea888b5ec672" />
 
-<img width="1186" height="993" alt="image" src="https://github.com/user-attachments/assets/96d62faf-d1db-497c-a133-70f09a4c5868" />
