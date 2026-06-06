@@ -207,16 +207,14 @@ public sealed class Win32DrawingHost : NativeControlHost
             return DefWindowProc(hwnd, WM_PAINT, IntPtr.Zero, IntPtr.Zero);
         }
 
-        var ps = new PAINTSTRUCT();
-        var hdc = BeginPaint(hwnd, ref ps);
-
+        var hdc = GetDC(hwnd);
         try
         {
             drawingGdiContext.BitBlt(hdc);
         }
         finally
         {
-            EndPaint(hwnd, ref ps);
+            ReleaseDC(hwnd, hdc);
         }
 
         return IntPtr.Zero;
@@ -368,4 +366,9 @@ public sealed class Win32DrawingHost : NativeControlHost
         IntPtr hWnd,
         IntPtr lpRect,
         bool bErase);
+    [DllImport("user32.dll")]
+    internal static extern IntPtr GetDC(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    internal static extern int ReleaseDC(IntPtr hWnd, IntPtr hDC);
 }

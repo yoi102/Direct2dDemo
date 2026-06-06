@@ -22,9 +22,11 @@
 
     <Grid>
         <Grid RowDefinitions="auto,*">
-            <ProgressBar Margin="3"
-                         IsVisible="{Binding Running}"
-                         IsIndeterminate="True" />
+            <Grid Margin="3" Height="3">
+                <ProgressBar
+                IsVisible="{Binding Running}"
+                IsIndeterminate="True" />
+            </Grid>
             <Grid ColumnDefinitions="270,*"
                   IsEnabled="{Binding Running, Converter={ cv:InvertBooleanConverter}}"
                   Grid.Row="1">

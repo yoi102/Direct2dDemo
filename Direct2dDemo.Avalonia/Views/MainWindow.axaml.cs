@@ -1,5 +1,4 @@
 using Avalonia.Controls;
-using Avalonia.Interactivity;
 using Direct2dDemo.ViewModels;
 
 namespace Direct2dDemo.Avalonia.Views;
@@ -17,10 +16,12 @@ public partial class MainWindow : Window
                 await mainWindowView.InitAsync();
             }
         };
-    }
-
-    protected override void OnLoaded(RoutedEventArgs e)
-    {
-        base.OnLoaded(e);
+        this.Closed += (sender, e) =>
+        {
+            if (this.DataContext is MainWindowViewModel mainWindowView)
+            {
+                mainWindowView.Dispose();
+            }
+        };
     }
 }
