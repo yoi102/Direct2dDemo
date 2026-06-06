@@ -230,14 +230,14 @@ public class ShapeElementGenerator
 
                 var line = new LineElement
                 {
-                    Point0 = new PointF(x0, y0),
-                    Point1 = new PointF(x1, y1),
+                    StartPoint = new PointF(x0, y0),
+                    EndPoint = new PointF(x1, y1),
 
                     DashStyle = RandomDashStyle(),
                     CapStyle = RandomCapStyle(),
 
                     StrokeWidth = NextFloat(1.0f, 4.0f),
-                    Color = RandomColor()
+                    StrokeColor = RandomColor()
                 };
 
                 result.Add(line);
@@ -415,14 +415,13 @@ public class ShapeElementGenerator
 
     private static DashStyle RandomDashStyle()
     {
-        return NextInt(0, 4) switch
+        return NextInt(0, 5) switch
         {
             0 => DashStyle.Solid,
             1 => DashStyle.Dash,
             2 => DashStyle.Dot,
             3 => DashStyle.DashDot,
-            _ => DashStyle.Solid
-            //_ => DashStyle.DashDotDot
+            _ => DashStyle.DashDotDot
         };
     }
 

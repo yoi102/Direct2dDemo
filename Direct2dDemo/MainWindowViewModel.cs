@@ -48,13 +48,6 @@ internal partial class MainWindowViewModel : ObservableObject, IDisposable
         Direct2dContext.DrawingElements.AddRange(polygon_elements);
         GdiContext.DrawingElements.AddRange(polygon_elements);
         PolygonCount += polygon_elements.Count;
-        PolygonCount += polygon_elements.Count;
-
-        var text_elements = await ShapeElementGenerator.GenTextElement(hwndWidth, hwndHeight, addCount);
-
-        Direct2dContext.DrawingElements.AddRange(text_elements);
-        GdiContext.DrawingElements.AddRange(text_elements);
-        TextCount += text_elements.Count;
 
         var rectangle_elements = await ShapeElementGenerator.GenRectangleElement(hwndWidth, hwndHeight, addCount);
         Direct2dContext.DrawingElements.AddRange(rectangle_elements);
@@ -70,6 +63,13 @@ internal partial class MainWindowViewModel : ObservableObject, IDisposable
         Direct2dContext.DrawingElements.AddRange(line_elements);
         GdiContext.DrawingElements.AddRange(line_elements);
         this.LineCount += line_elements.Count;
+
+        var text_elements = await ShapeElementGenerator.GenTextElement(hwndWidth, hwndHeight, addCount);
+
+        Direct2dContext.DrawingElements.AddRange(text_elements);
+        GdiContext.DrawingElements.AddRange(text_elements);
+        TextCount += text_elements.Count;
+
 
         stopwatch.Stop();
         this.DataGenerationTime = stopwatch.ElapsedMilliseconds;
@@ -132,6 +132,10 @@ internal partial class MainWindowViewModel : ObservableObject, IDisposable
         EllipseCount = 0;
         PolygonCount = 0;
         TextCount = 0;
+        RectangleCount = 0;
+        RectangleGeometryCount = 0;
+        EllipseGeometryCount = 0;
+        LineCount = 0;
     }
 
     [RelayCommand]

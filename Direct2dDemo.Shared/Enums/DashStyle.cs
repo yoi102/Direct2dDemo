@@ -9,4 +9,6 @@ public enum DashStyle : uint
     Dot,
 
     DashDot,
+
+    DashDotDot,
 }

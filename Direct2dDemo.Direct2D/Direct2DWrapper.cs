@@ -1,4 +1,5 @@
 ﻿using Direct2dDemo.Shared.Elements.GeometryElements;
+using Direct2dDemo.Shared.Enums;
 using System.Diagnostics.CodeAnalysis;
 using System.Drawing;
 using System.Runtime.InteropServices;
@@ -110,7 +111,6 @@ internal sealed class Direct2DWrapper : IDisposable
         _d2dContext.SetTarget(_targetBitmap);
     }
 
-
     public ID2D1Bitmap? CreateBitmap()
     {
         ThrowIfDisposed();
@@ -134,8 +134,6 @@ internal sealed class Direct2DWrapper : IDisposable
             bitmapOptions = D2D1_BITMAP_OPTIONS.D2D1_BITMAP_OPTIONS_TARGET
         };
 
-
-
         var newBitmap = _d2dContext.CreateBitmap(
             pixelSize,
             nint.Zero,
@@ -145,7 +143,6 @@ internal sealed class Direct2DWrapper : IDisposable
 
         return newBitmap;
     }
-
 
     //public void SaveAsPdf(
     //ID2D1DeviceContext deviceContext,
@@ -685,8 +682,7 @@ internal sealed class Direct2DWrapper : IDisposable
             throw new ObjectDisposedException(nameof(Direct2DWrapper));
     }
 
-    public static void SafeRelease<T>(ref T? comObject)
-        where T : class
+    public static void SafeRelease<T>(T? comObject) where T : class
     {
         if (comObject == null)
             return;
@@ -707,23 +703,317 @@ internal sealed class Direct2DWrapper : IDisposable
         }
         finally
         {
-            comObject = null;
         }
+    }
+
+    public static void SafeRelease<T>(ref T? comObject)
+        where T : class
+    {
+        SafeRelease(comObject);
+        comObject = null;
     }
 
     #region Cache
 
     //各10_000 有cache 时，372ms  ,无cache时，441ms
-    //耗时差距不太明显
+    //耗时差距似乎不太明显
     private Dictionary<Color, ID2D1SolidColorBrush> _solidColorBrushCacahe = new();
 
     private readonly Dictionary<(string FontFamily, float FontSize), IDWriteTextFormat> _textFormatCache = new();
-    private readonly Dictionary<PolygonGeometryElement, ID2D1PathGeometry> _pathGeometryCache = new();
+    private readonly Dictionary<PolygonGeometryElement, ID2D1PathGeometry> _polygonGeometryCache = new();
+    private readonly Dictionary<RectangleGeometryElement, ID2D1RectangleGeometry> _rectangleGeometryCache = new();
+    private readonly Dictionary<EllipseGeometryElement, ID2D1EllipseGeometry> _ellipseGeometryCache = new();
+    private readonly Dictionary<D2D1_STROKE_STYLE_PROPERTIES, ID2D1StrokeStyle> _strokeStyleCache = new();
+    private readonly Dictionary<(HatchStyle HatchStyle, Color HatchColor, Color BackgroundColor, int CellSize, int LineWidth), ID2D1BitmapBrush> _hatchBrushCache = new();
 
-    public ID2D1PathGeometry GetOrCreatePathGeometry(PolygonGeometryElement element)
+    public ID2D1BitmapBrush GetOrCreateHatchStyle(
+                                                  HatchStyle hatchStyle,
+                                                  Color hatchColor,
+                                                  Color backgroundColor,
+                                                  int cellSize = 8,
+                                                  int lineWidth = 1)
+    {
+        if (_d2dContext is null)
+            throw new InvalidOperationException("Direct2D device context is not created.");
+
+        if (cellSize <= 0)
+            throw new ArgumentOutOfRangeException(nameof(cellSize));
+
+        if (lineWidth <= 0)
+            throw new ArgumentOutOfRangeException(nameof(lineWidth));
+
+        var key = (hatchStyle, hatchColor, backgroundColor, cellSize, lineWidth);
+
+        if (_hatchBrushCache.TryGetValue(key, out var cached))
+            return cached;
+
+        var bitmap = CreateHatchBitmap(
+            hatchStyle,
+            hatchColor,
+            backgroundColor,
+            cellSize,
+            lineWidth);
+
+        ID2D1BitmapBrush? brush = null;
+
+        try
+        {
+            var bitmapBrushProperties = new D2D1_BITMAP_BRUSH_PROPERTIES
+            {
+                extendModeX = D2D1_EXTEND_MODE.D2D1_EXTEND_MODE_WRAP,
+                extendModeY = D2D1_EXTEND_MODE.D2D1_EXTEND_MODE_WRAP,
+                interpolationMode = D2D1_BITMAP_INTERPOLATION_MODE.D2D1_BITMAP_INTERPOLATION_MODE_NEAREST_NEIGHBOR
+            };
+
+            var brushProperties = new D2D1_BRUSH_PROPERTIES
+            {
+                opacity = 1.0f,
+                transform = D2D_MATRIX_3X2_F.Identity()
+            };
+
+            brush = _d2dContext.CreateBitmapBrush(
+                bitmap,
+                bitmapBrushProperties,
+                brushProperties);
+
+            _hatchBrushCache[key] = brush;
+
+            return brush;
+        }
+        catch
+        {
+            SafeRelease(ref brush);
+            throw;
+        }
+        finally
+        {
+            SafeRelease(ref bitmap);
+        }
+    }
+
+    private ID2D1Bitmap CreateHatchBitmap(
+    HatchStyle hatchStyle,
+    Color hatchColor,
+    Color backgroundColor,
+    int cellSize,
+    int lineWidth)
+    {
+        if (_d2dContext is null)
+            throw new InvalidOperationException("Direct2D device context is not created.");
+
+        var data = new byte[cellSize * cellSize * 4];
+
+        for (var y = 0; y < cellSize; y++)
+        {
+            for (var x = 0; x < cellSize; x++)
+            {
+                WritePixel(data, cellSize, x, y, backgroundColor);
+            }
+        }
+
+        for (var y = 0; y < cellSize; y++)
+        {
+            for (var x = 0; x < cellSize; x++)
+            {
+                if (IsHatchPixel(hatchStyle, x, y, cellSize, lineWidth))
+                {
+                    WritePixel(data, cellSize, x, y, hatchColor);
+                }
+            }
+        }
+
+        var bitmapProperties = new D2D1_BITMAP_PROPERTIES1
+        {
+            pixelFormat = new D2D1_PIXEL_FORMAT
+            {
+                format = DXGI_FORMAT.DXGI_FORMAT_B8G8R8A8_UNORM,
+                alphaMode = D2D1_ALPHA_MODE.D2D1_ALPHA_MODE_PREMULTIPLIED
+            },
+            dpiX = 96.0f,
+            dpiY = 96.0f,
+            bitmapOptions = D2D1_BITMAP_OPTIONS.D2D1_BITMAP_OPTIONS_NONE
+        };
+
+        var dataPtr = nint.Zero;
+
+        try
+        {
+            dataPtr = Marshal.AllocHGlobal(data.Length);
+            Marshal.Copy(data, 0, dataPtr, data.Length);
+
+            return _d2dContext.CreateBitmap(
+                new D2D_SIZE_U
+                {
+                    width = (uint)cellSize,
+                    height = (uint)cellSize
+                },
+                dataPtr,
+                (uint)(cellSize * 4),
+                bitmapProperties);
+        }
+        finally
+        {
+            if (dataPtr != nint.Zero)
+                Marshal.FreeHGlobal(dataPtr);
+        }
+    }
+
+    private static void WritePixel(
+                                     byte[] data,
+                                     int width,
+                                     int x,
+                                     int y,
+                                     Color color)
+    {
+        var offset = (y * width + x) * 4;
+
+        var alpha = color.A / 255.0f;
+
+        data[offset + 0] = (byte)(color.B * alpha);
+        data[offset + 1] = (byte)(color.G * alpha);
+        data[offset + 2] = (byte)(color.R * alpha);
+        data[offset + 3] = color.A;
+    }
+
+    private static bool IsHatchPixel(
+                                     HatchStyle hatchStyle,
+                                     int x,
+                                     int y,
+                                     int cellSize,
+                                     int lineWidth)
+    {
+        return hatchStyle switch
+        {
+            HatchStyle.Horizontal =>
+                y < lineWidth,
+
+            HatchStyle.Vertical =>
+                x < lineWidth,
+
+            HatchStyle.Cross =>
+                y < lineWidth ||
+                x < lineWidth,
+
+            HatchStyle.ForwardDiagonal =>
+                Math.Abs(x - y) < lineWidth,
+
+            HatchStyle.BackwardDiagonal =>
+                Math.Abs(x + y - (cellSize - 1)) < lineWidth,
+
+            HatchStyle.DiagCross =>
+                Math.Abs(x - y) < lineWidth ||
+                Math.Abs(x + y - (cellSize - 1)) < lineWidth,
+
+            _ => throw new ArgumentOutOfRangeException(nameof(hatchStyle))
+        };
+    }
+
+    public ID2D1StrokeStyle GetOrCreateStrokeStyle(CapStyle capStyle, DashStyle dashStyle)
+    {
+        if (_d2dFactory is null)
+            throw new InvalidOperationException("Direct2D factory is not created.");
+        var props = new D2D1_STROKE_STYLE_PROPERTIES
+        {
+            startCap = (D2D1_CAP_STYLE)capStyle,
+            endCap = (D2D1_CAP_STYLE)capStyle,
+            dashCap = (D2D1_CAP_STYLE)capStyle,
+            miterLimit = 10.0f,
+            dashStyle = (D2D1_DASH_STYLE)dashStyle,
+            dashOffset = 0.0f
+        };
+
+        if (_strokeStyleCache.TryGetValue(props, out var cached))
+            return cached;
+
+        var strokeStyle = this._d2dFactory.CreateStrokeStyle(props, null!, 0);
+
+        _strokeStyleCache[props] = strokeStyle;
+        return strokeStyle;
+    }
+
+    public ID2D1EllipseGeometry GetOrCreateEllipseGeometryElement(EllipseGeometryElement element)
+    {
+        if (_ellipseGeometryCache.TryGetValue(element, out var cached))
+            return cached;
+
+        if (_d2dFactory is null)
+            throw new InvalidOperationException("Direct2D factory is not created.");
+
+        if (element.RadiusX <= 0)
+            throw new ArgumentOutOfRangeException(nameof(element.RadiusX));
+
+        if (element.RadiusY <= 0)
+            throw new ArgumentOutOfRangeException(nameof(element.RadiusY));
+
+        var ellipse = new D2D1_ELLIPSE
+        {
+            point = new D2D_POINT_2F
+            {
+                x = element.Center.X,
+                y = element.Center.Y
+            },
+            radiusX = element.RadiusX,
+            radiusY = element.RadiusY
+        };
+
+        ID2D1EllipseGeometry? geometry = null;
+
+        try
+        {
+            geometry = _d2dFactory.CreateEllipseGeometry(ellipse);
+
+            _ellipseGeometryCache[element] = geometry;
+            return geometry;
+        }
+        catch
+        {
+            SafeRelease(ref geometry);
+            throw;
+        }
+    }
+
+    public ID2D1RectangleGeometry GetOrCreateRectangleGeometry(RectangleGeometryElement element)
+    {
+        if (_rectangleGeometryCache.TryGetValue(element, out var cached))
+            return cached;
+
+        if (_d2dFactory is null)
+            throw new InvalidOperationException("Direct2D factory is not created.");
+
+        if (element.Width <= 0)
+            throw new ArgumentOutOfRangeException(nameof(element.Width));
+
+        if (element.Height <= 0)
+            throw new ArgumentOutOfRangeException(nameof(element.Height));
+
+        var rectangle = new D2D_RECT_F
+        {
+            left = element.TopLeft.X,
+            top = element.TopLeft.Y,
+            right = element.TopLeft.X + element.Width,
+            bottom = element.TopLeft.Y + element.Height
+        };
+
+        ID2D1RectangleGeometry? geometry = null;
+
+        try
+        {
+            geometry = _d2dFactory.CreateRectangleGeometry(rectangle);
+
+            _rectangleGeometryCache[element] = geometry;
+            return geometry;
+        }
+        catch
+        {
+            SafeRelease(ref geometry);
+            throw;
+        }
+    }
+
+    public ID2D1PathGeometry GetOrCreatePolygonGeometry(PolygonGeometryElement element)
     {
         //not good to use PolygonElement as key directly, but for demo purpose it's fine.
-        if (_pathGeometryCache.TryGetValue(element, out var cached))
+        if (_polygonGeometryCache.TryGetValue(element, out var cached))
             return cached;
 
         if (_d2dFactory is null)
@@ -752,7 +1042,7 @@ internal sealed class Direct2DWrapper : IDisposable
 
             sink.Close().ThrowIfFailed();
 
-            _pathGeometryCache[element] = geometry;
+            _polygonGeometryCache[element] = geometry;
             return geometry;
         }
         catch
@@ -838,24 +1128,41 @@ internal sealed class Direct2DWrapper : IDisposable
 
     public void ClearCache()
     {
-        foreach (var brush in _solidColorBrushCacahe.Values)
+        foreach (var item in _solidColorBrushCacahe.Values)
         {
-            var item = brush;
-            SafeRelease(ref item);
+            SafeRelease(item);
         }
         _solidColorBrushCacahe.Clear();
-        foreach (var textFormat in _textFormatCache.Values)
+        foreach (var item in _textFormatCache.Values)
         {
-            var item = textFormat;
-            SafeRelease(ref item);
+            SafeRelease(item);
         }
         _textFormatCache.Clear();
-        foreach (var geometry in _pathGeometryCache.Values)
+        foreach (var item in _polygonGeometryCache.Values)
         {
-            var item = geometry;
-            SafeRelease(ref item);
+            SafeRelease(item);
         }
-        _pathGeometryCache.Clear();
+        _polygonGeometryCache.Clear();
+        foreach (var item in _rectangleGeometryCache.Values)
+        {
+            SafeRelease(item);
+        }
+        _rectangleGeometryCache.Clear();
+        foreach (var item in _ellipseGeometryCache.Values)
+        {
+            SafeRelease(item);
+        }
+        _ellipseGeometryCache.Clear();
+        foreach (var item in _strokeStyleCache.Values)
+        {
+            SafeRelease(item);
+        }
+        _strokeStyleCache.Clear();
+        foreach (var item in _hatchBrushCache.Values)
+        {
+            SafeRelease(item);
+        }
+        _hatchBrushCache.Clear();
     }
 
     #endregion Cache

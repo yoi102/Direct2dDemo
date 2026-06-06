@@ -11,7 +11,7 @@ namespace Direct2dDemo.Direct2D;
 
 public class Direct2dContext : IDrawingContext, ICanvasContext
 {
-    private Stopwatch stopwatch = new Stopwatch();
+    private readonly Stopwatch stopwatch = new();
 
     public event EventHandler<double>? Rendered;
 
