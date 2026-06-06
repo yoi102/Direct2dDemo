@@ -1,0 +1,8 @@
+<Solution>
+  <Project Path="Direct2dDemo.Avalonia/Direct2dDemo.Avalonia.csproj" Id="cd1b20e7-efac-4bf9-8f14-e6e8239ab523" />
+  <Project Path="Direct2dDemo.CustomControl.Avalonia/Direct2dDemo.CustomControl.Avalonia.csproj" Id="8d5f9cbd-985c-47d1-b6f6-0202057c132a" />
+  <Project Path="Direct2dDemo.Direct2D/Direct2dDemo.Direct2D.csproj" Id="06929cb4-9a69-4056-bedd-65a7663621ad" />
+  <Project Path="Direct2dDemo.GDI/Direct2dDemo.GDI.csproj" Id="7679dc7e-935b-4bfa-aabf-0fbd53d6252d" />
+  <Project Path="Direct2dDemo.Shared/Direct2dDemo.Shared.csproj" Id="c9aed1d7-ff1a-461f-a8b0-7a4b4cfbbd16" />
+  <Project Path="Direct2dDemo.ViewModels/Direct2dDemo.ViewModels.csproj" />
+</Solution>
