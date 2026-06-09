@@ -14,9 +14,6 @@ public sealed class Win32DrawingHost : NativeControlHost
 
     private bool _initialized;
 
-    private int _rightButtonX;
-    private int _rightButtonY;
-
     public IDrawingContext? DrawingContext
     {
         get => GetValue(DrawingContextProperty);
@@ -138,8 +135,12 @@ public sealed class Win32DrawingHost : NativeControlHost
 
             case WM_RBUTTONDOWN:
                 {
-                    _rightButtonX = GetX(lParam);
-                    _rightButtonY = GetY(lParam);
+                    var _rightButtonX = GetX(lParam);
+                    var _rightButtonY = GetY(lParam);
+                    if (DrawingContext is ICanvasContext canvasContext)
+                    {
+                        canvasContext.BeginPan(_rightButtonX, _rightButtonY);
+                    }
                     SetCapture(hwnd);
                     return IntPtr.Zero;
                 }
@@ -157,12 +158,9 @@ public sealed class Win32DrawingHost : NativeControlHost
                         var x = GetX(lParam);
                         var y = GetY(lParam);
 
-                        var deltaX = x - _rightButtonX;
-                        var deltaY = y - _rightButtonY;
-
                         if (DrawingContext is ICanvasContext canvasContext)
                         {
-                            canvasContext.Move(deltaX, deltaY);
+                            canvasContext.Pan(x, y);
                         }
 
                         InvalidateRect(hwnd, IntPtr.Zero, false);

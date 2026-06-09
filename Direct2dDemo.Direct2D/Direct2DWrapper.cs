@@ -326,7 +326,7 @@ internal sealed class Direct2DWrapper : IDisposable
         if (_isDrawing)
             throw new InvalidOperationException("BeginDraw has already been called.");
 
-        _d2dContext.SetTarget(_targetBitmap);
+        //_d2dContext.SetTarget(_targetBitmap);
         _d2dContext.BeginDraw();
         _isDrawing = true;
     }
@@ -376,6 +376,21 @@ internal sealed class Direct2DWrapper : IDisposable
         EndDraw();
 
         Present();
+    }
+
+    public ID2D1TransformedGeometry CreateTransformedGeometry(
+        ID2D1Geometry sourceGeometry,
+        D2D_MATRIX_3X2_F transform)
+    {
+        ThrowIfDisposed();
+
+        if (sourceGeometry is null)
+            throw new ArgumentNullException(nameof(sourceGeometry));
+
+        if (_d2dFactory is null)
+            throw new InvalidOperationException("Direct2D factory is not created.");
+
+        return _d2dFactory.CreateTransformedGeometry(sourceGeometry, transform);
     }
 
     public void Clear(float r, float g, float b, float a)

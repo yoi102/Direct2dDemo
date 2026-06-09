@@ -16,8 +16,19 @@ public partial class HwndHost : System.Windows.Controls.UserControl
         panelHost.MouseMove += PanelHost_MouseMove;
         panelHost.MouseDown += PanelHost_MouseDown;
         panelHost.MouseWheel += PanelHost_MouseWheel;
-
+        panelHost.MouseUp += PanelHost_MouseUp;
         this.Loaded += HwndHost_Loaded;
+    }
+
+    private void PanelHost_MouseUp(object? sender, MouseEventArgs e)
+    {
+        if (e.Button == MouseButtons.Right)
+        {
+            if (DrawingContext is ICanvasContext canvasContext)
+            {
+                canvasContext.EndPan(e.X, e.Y);
+            }
+        }
     }
 
     private void HwndHost_Loaded(object sender, RoutedEventArgs e)
@@ -33,15 +44,15 @@ public partial class HwndHost : System.Windows.Controls.UserControl
         }
     }
 
-    private int rightButtonX;
-    private int rightButtonY;
 
     private void PanelHost_MouseDown(object? sender, MouseEventArgs e)
     {
         if (e.Button == MouseButtons.Right)
         {
-            rightButtonX = e.X;
-            rightButtonY = e.Y;
+            if (DrawingContext is ICanvasContext canvasContext)
+            {
+                canvasContext.BeginPan(e.X, e.Y);
+            }
         }
     }
 
@@ -51,9 +62,7 @@ public partial class HwndHost : System.Windows.Controls.UserControl
         {
             if (DrawingContext is ICanvasContext canvasContext)
             {
-                var deltaX = e.X - rightButtonX;
-                var deltaY = e.Y - rightButtonY;
-                canvasContext.Move(deltaX, deltaY);
+                canvasContext.Pan(e.X, e.Y);
             }
         }
     }

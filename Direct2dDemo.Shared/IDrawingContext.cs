@@ -24,7 +24,9 @@ public interface IDrawingGdiContext
 
 public interface ICanvasContext
 {
-    void Move(int deltaX, int deltaY);
+    void BeginPan(int x, int y);
+    void Pan(int x, int y);
+    void EndPan(int x, int y);
 
     void Zoom(float zoomFactor, int centerX, int centerY);
 }
