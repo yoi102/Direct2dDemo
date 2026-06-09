@@ -41,9 +41,12 @@ public partial class HwndHost : System.Windows.Controls.UserControl
         if (DrawingContext is ICanvasContext canvasContext)
         {
             canvasContext.Zoom(e.Delta > 0 ? 1.1f : 0.9f, e.X, e.Y);
+            if (DrawingContext is IDrawingGdiContext drawingGdiContext)
+            {
+                drawingGdiContext.BitBlt();
+            }
         }
     }
-
 
     private void PanelHost_MouseDown(object? sender, MouseEventArgs e)
     {
@@ -63,6 +66,10 @@ public partial class HwndHost : System.Windows.Controls.UserControl
             if (DrawingContext is ICanvasContext canvasContext)
             {
                 canvasContext.Pan(e.X, e.Y);
+                if (DrawingContext is IDrawingGdiContext drawingGdiContext)
+                {
+                    drawingGdiContext.BitBlt();
+                }
             }
         }
     }

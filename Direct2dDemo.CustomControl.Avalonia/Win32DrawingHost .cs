@@ -161,6 +161,10 @@ public sealed class Win32DrawingHost : NativeControlHost
                         if (DrawingContext is ICanvasContext canvasContext)
                         {
                             canvasContext.Pan(x, y);
+                            if (DrawingContext is IDrawingGdiContext drawingGdiContext)
+                            {
+                                drawingGdiContext.BitBlt();
+                            }
                         }
 
                         InvalidateRect(hwnd, IntPtr.Zero, false);
@@ -184,6 +188,10 @@ public sealed class Win32DrawingHost : NativeControlHost
                     if (DrawingContext is ICanvasContext canvasContext)
                     {
                         canvasContext.Zoom(delta > 0 ? 1.1f : 0.9f, pt.X, pt.Y);
+                        if (DrawingContext is IDrawingGdiContext drawingGdiContext)
+                        {
+                            drawingGdiContext.BitBlt();
+                        }
                         InvalidateRect(hwnd, IntPtr.Zero, false);
                     }
 
@@ -360,6 +368,7 @@ public sealed class Win32DrawingHost : NativeControlHost
         IntPtr hWnd,
         IntPtr lpRect,
         bool bErase);
+
     [DllImport("user32.dll")]
     internal static extern IntPtr GetDC(IntPtr hWnd);
 

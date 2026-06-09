@@ -11,42 +11,53 @@ namespace Direct2dDemo.GDI;
 
 internal static class DrawExtension
 {
-    public static void Draw(this IDrawingElement element, GdiWrapper gdiWrapper)
+    public static void Draw(this IDrawingElement element, GdiWrapper gdiWrapper, float offsetX, float offsetY, float scale)
     {
+        if (scale <= 0)
+            return;
+
         switch (element)
         {
             case PolygonGeometryElement polygonElement:
-                Draw(polygonElement, gdiWrapper);
+                Draw(polygonElement, gdiWrapper, offsetX, offsetY, scale);
                 break;
 
             case EllipseElement ellipseElement:
-                Draw(ellipseElement, gdiWrapper);
+                Draw(ellipseElement, gdiWrapper, offsetX, offsetY, scale);
                 break;
 
             case RectangleElement rectangleElement:
-                Draw(rectangleElement, gdiWrapper);
+                Draw(rectangleElement, gdiWrapper, offsetX, offsetY, scale);
                 break;
 
             case RectangleGeometryElement rectangleGeometryElement:
-                Draw(rectangleGeometryElement, gdiWrapper);
+                Draw(rectangleGeometryElement, gdiWrapper, offsetX, offsetY, scale);
                 break;
 
             case EllipseGeometryElement ellipseGeometryElement:
-                Draw(ellipseGeometryElement, gdiWrapper);
+                Draw(ellipseGeometryElement, gdiWrapper, offsetX, offsetY, scale);
                 break;
 
             case TextElement textElement:
-                Draw(textElement, gdiWrapper);
+                Draw(textElement, gdiWrapper, offsetX, offsetY, scale);
                 break;
 
             case LineElement lineElement:
-                Draw(lineElement, gdiWrapper);
+                Draw(lineElement, gdiWrapper, offsetX, offsetY, scale);
                 break;
         }
     }
 
     public static void Draw(LineElement element, GdiWrapper gdiWrapper)
     {
+        Draw(element, gdiWrapper, 0.0f, 0.0f, 1.0f);
+    }
+
+    public static void Draw(LineElement element, GdiWrapper gdiWrapper, float offsetX, float offsetY, float scale)
+    {
+        if (scale <= 0)
+            return;
+
         if (element.StrokeWidth <= 0)
             return;
 
@@ -55,13 +66,16 @@ internal static class DrawExtension
 
         var hdc = gdiWrapper.Hdc;
 
+        var start = TransformPoint(element.StartPoint, offsetX, offsetY, scale);
+        var end = TransformPoint(element.EndPoint, offsetX, offsetY, scale);
+
         SafeHPEN? createdPen = null;
 
         try
         {
             createdPen = CreatePen(
                 element.StrokeColor,
-                element.StrokeWidth,
+                ScaleLength(element.StrokeWidth, scale),
                 element.DashStyle,
                 element.CapStyle,
                 element.LineJoin);
@@ -72,14 +86,14 @@ internal static class DrawExtension
             {
                 Gdi32.MoveToEx(
                     hdc,
-                    ToInt(element.StartPoint.X),
-                    ToInt(element.StartPoint.Y),
+                    ToInt(start.X),
+                    ToInt(start.Y),
                     out _);
 
                 Gdi32.LineTo(
                     hdc,
-                    ToInt(element.EndPoint.X),
-                    ToInt(element.EndPoint.Y));
+                    ToInt(end.X),
+                    ToInt(end.Y));
             }
             finally
             {
@@ -95,6 +109,14 @@ internal static class DrawExtension
 
     public static void Draw(RectangleGeometryElement element, GdiWrapper gdiWrapper)
     {
+        Draw(element, gdiWrapper, 0.0f, 0.0f, 1.0f);
+    }
+
+    public static void Draw(RectangleGeometryElement element, GdiWrapper gdiWrapper, float offsetX, float offsetY, float scale)
+    {
+        if (scale <= 0)
+            return;
+
         if (element.Width <= 0 || element.Height <= 0)
             return;
 
@@ -111,18 +133,33 @@ internal static class DrawExtension
             element.StrokeWidth,
             element.DashStyle,
             element.CapStyle,
-            element.LineJoin);
+            element.LineJoin,
+            offsetX,
+            offsetY,
+            scale);
     }
 
     public static void Draw(EllipseGeometryElement element, GdiWrapper gdiWrapper)
     {
+        Draw(element, gdiWrapper, 0.0f, 0.0f, 1.0f);
+    }
+
+    public static void Draw(EllipseGeometryElement element, GdiWrapper gdiWrapper, float offsetX, float offsetY, float scale)
+    {
+        if (scale <= 0)
+            return;
+
         if (element.RadiusX <= 0 || element.RadiusY <= 0)
             return;
 
-        var left = ToInt(element.Center.X - element.RadiusX);
-        var top = ToInt(element.Center.Y - element.RadiusY);
-        var right = ToInt(element.Center.X + element.RadiusX);
-        var bottom = ToInt(element.Center.Y + element.RadiusY);
+        var center = TransformPoint(element.Center, offsetX, offsetY, scale);
+        var radiusX = ScaleLength(element.RadiusX, scale);
+        var radiusY = ScaleLength(element.RadiusY, scale);
+
+        var left = ToInt(center.X - radiusX);
+        var top = ToInt(center.Y - radiusY);
+        var right = ToInt(center.X + radiusX);
+        var bottom = ToInt(center.Y + radiusY);
 
         var hdc = gdiWrapper.Hdc;
 
@@ -133,7 +170,7 @@ internal static class DrawExtension
             element.HatchStyle,
             element.StrokeColor,
             element.StrokeColor,
-            element.StrokeWidth,
+            ScaleLength(element.StrokeWidth, scale),
             element.DashStyle,
             element.CapStyle,
             element.LineJoin,
@@ -142,6 +179,14 @@ internal static class DrawExtension
 
     public static void Draw(RectangleElement element, GdiWrapper gdiWrapper)
     {
+        Draw(element, gdiWrapper, 0.0f, 0.0f, 1.0f);
+    }
+
+    public static void Draw(RectangleElement element, GdiWrapper gdiWrapper, float offsetX, float offsetY, float scale)
+    {
+        if (scale <= 0)
+            return;
+
         if (element.Width <= 0 || element.Height <= 0)
             return;
 
@@ -158,12 +203,23 @@ internal static class DrawExtension
             element.StrokeWidth,
             element.DashStyle,
             element.CapStyle,
-            element.LineJoin);
+            element.LineJoin,
+            offsetX,
+            offsetY,
+            scale);
     }
 
     public static void Draw(TextElement element, GdiWrapper gdiWrapper)
     {
+        Draw(element, gdiWrapper, 0.0f, 0.0f, 1.0f);
+    }
+
+    public static void Draw(TextElement element, GdiWrapper gdiWrapper, float offsetX, float offsetY, float scale)
+    {
         if (string.IsNullOrEmpty(element.Text))
+            return;
+
+        if (scale <= 0)
             return;
 
         if (element.FontSize <= 0)
@@ -172,11 +228,16 @@ internal static class DrawExtension
         if (element.Color.A <= 0)
             return;
 
+        var scaledFontSize = ScaleLength(element.FontSize, scale);
+        if (scaledFontSize <= 0)
+            return;
+
         var hdc = gdiWrapper.Hdc;
+        var position = TransformPoint(element.Position, offsetX, offsetY, scale);
 
         SafeHFONT? font = null;
 
-        font = CreateFont(element.FontFamily, element.FontSize);
+        font = CreateFont(element.FontFamily, scaledFontSize);
 
         var oldFont = Gdi32.SelectObject(hdc, font);
         var oldBkMode = Gdi32.SetBkMode(hdc, BackgroundMode.TRANSPARENT);
@@ -186,8 +247,8 @@ internal static class DrawExtension
         {
             Gdi32.TextOut(
                 hdc,
-                ToInt(element.Position.X),
-                ToInt(element.Position.Y),
+                ToInt(position.X),
+                ToInt(position.Y),
                 element.Text,
                 element.Text.Length);
         }
@@ -207,6 +268,14 @@ internal static class DrawExtension
 
     public static void Draw(PolygonGeometryElement element, GdiWrapper gdiWrapper)
     {
+        Draw(element, gdiWrapper, 0.0f, 0.0f, 1.0f);
+    }
+
+    public static void Draw(PolygonGeometryElement element, GdiWrapper gdiWrapper, float offsetX, float offsetY, float scale)
+    {
+        if (scale <= 0)
+            return;
+
         if (element.Points.Count < 3)
             return;
 
@@ -216,7 +285,7 @@ internal static class DrawExtension
 
         for (var i = 0; i < element.Points.Count; i++)
         {
-            var point = element.Points[i];
+            var point = TransformPoint(element.Points[i], offsetX, offsetY, scale);
 
             points[i] = new POINT(
                 ToInt(point.X),
@@ -230,7 +299,7 @@ internal static class DrawExtension
             element.HatchStyle,
             element.StrokeColor,
             element.StrokeColor,
-            element.StrokeWidth,
+            ScaleLength(element.StrokeWidth, scale),
             element.DashStyle,
             element.CapStyle,
             element.LineJoin,
@@ -239,13 +308,25 @@ internal static class DrawExtension
 
     public static void Draw(EllipseElement element, GdiWrapper gdiWrapper)
     {
+        Draw(element, gdiWrapper, 0.0f, 0.0f, 1.0f);
+    }
+
+    public static void Draw(EllipseElement element, GdiWrapper gdiWrapper, float offsetX, float offsetY, float scale)
+    {
+        if (scale <= 0)
+            return;
+
         if (element.RadiusX <= 0 || element.RadiusY <= 0)
             return;
 
-        var left = ToInt(element.Center.X - element.RadiusX);
-        var top = ToInt(element.Center.Y - element.RadiusY);
-        var right = ToInt(element.Center.X + element.RadiusX);
-        var bottom = ToInt(element.Center.Y + element.RadiusY);
+        var center = TransformPoint(element.Center, offsetX, offsetY, scale);
+        var radiusX = ScaleLength(element.RadiusX, scale);
+        var radiusY = ScaleLength(element.RadiusY, scale);
+
+        var left = ToInt(center.X - radiusX);
+        var top = ToInt(center.Y - radiusY);
+        var right = ToInt(center.X + radiusX);
+        var bottom = ToInt(center.Y + radiusY);
 
         var hdc = gdiWrapper.Hdc;
 
@@ -256,7 +337,7 @@ internal static class DrawExtension
             element.HatchStyle,
             element.StrokeColor,
             element.StrokeColor,
-            element.StrokeWidth,
+            ScaleLength(element.StrokeWidth, scale),
             element.DashStyle,
             element.CapStyle,
             element.LineJoin,
@@ -276,12 +357,17 @@ internal static class DrawExtension
         float strokeWidth,
         DashStyle dashStyle,
         CapStyle capStyle,
-        LineJoin lineJoin)
+        LineJoin lineJoin,
+        float offsetX,
+        float offsetY,
+        float scale)
     {
-        var left = ToInt(topLeft.X);
-        var top = ToInt(topLeft.Y);
-        var right = ToInt(topLeft.X + width);
-        var bottom = ToInt(topLeft.Y + height);
+        var leftTop = TransformPoint(topLeft, offsetX, offsetY, scale);
+
+        var left = ToInt(leftTop.X);
+        var top = ToInt(leftTop.Y);
+        var right = ToInt(leftTop.X + ScaleLength(width, scale));
+        var bottom = ToInt(leftTop.Y + ScaleLength(height, scale));
 
         var hdc = gdiWrapper.Hdc;
 
@@ -292,7 +378,7 @@ internal static class DrawExtension
             hatchStyle,
             hatchColor,
             strokeColor,
-            strokeWidth,
+            ScaleLength(strokeWidth, scale),
             dashStyle,
             capStyle,
             lineJoin,
@@ -608,6 +694,18 @@ internal static class DrawExtension
     {
         // COLORREF is 0x00BBGGRR. GDI ignores alpha.
         return color.R | (color.G << 8) | (color.B << 16);
+    }
+
+    private static PointF TransformPoint(PointF point, float offsetX, float offsetY, float scale)
+    {
+        return new PointF(
+            point.X * scale + offsetX,
+            point.Y * scale + offsetY);
+    }
+
+    private static float ScaleLength(float value, float scale)
+    {
+        return value * scale;
     }
 
     private static int ToInt(float value)

@@ -105,6 +105,31 @@ internal sealed class GdiWrapper : IDisposable
         _isDrawing = false;
     }
 
+    public void BitBlt()
+    {
+        ThrowIfDisposed();
+        EnsureTargetReady();
+        var hdc = User32.GetDC(_hwnd);
+        if (hdc == nint.Zero)
+            throw new InvalidOperationException("GetDC failed.");
+
+        if (!Gdi32.BitBlt(
+                hdc,
+                0,
+                0,
+                _width,
+                _height,
+                _memoryDc,
+                0,
+                0,
+                RasterOperationMode.SRCCOPY))
+        {
+            throw new InvalidOperationException("BitBlt failed.");
+        }
+
+
+        hdc?.Dispose();
+    }
     public void BitBlt(nint hdc)
     {
         ThrowIfDisposed();

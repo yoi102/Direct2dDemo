@@ -704,13 +704,13 @@ internal sealed class Direct2DWrapper : IDisposable
 
         try
         {
-            if (comObject is IDisposable disposable)
-            {
-                disposable.Dispose();
-            }
-            else if (Marshal.IsComObject(comObject))
+            if (Marshal.IsComObject(comObject))
             {
                 Marshal.FinalReleaseComObject(comObject);
+            }
+            else if (comObject is IDisposable disposable)
+            {
+                disposable.Dispose();
             }
         }
         catch
