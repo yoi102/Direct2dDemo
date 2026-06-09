@@ -1,3 +1,4 @@
+
 Direct2dDemo
 
 该 Demo 主要用于验证 Direct2D 在绘制大量基础图形时的渲染速度与性能表现，
@@ -9,4 +10,8 @@ Direct2D 与 GDI 在渲染效率、刷新耗时以及整体流畅度方面的差
 
 
 <img width="1186" height="993" alt="image" src="https://github.com/user-attachments/assets/f00a2bdb-33c8-409b-b94d-ea888b5ec672" />
+
+<img width="841" height="722" alt="PixPin_2026-06-09_20-54-27" src="https://github.com/user-attachments/assets/66fef908-9e7e-48da-b69f-20d3e884fe28" />
+
+
 
