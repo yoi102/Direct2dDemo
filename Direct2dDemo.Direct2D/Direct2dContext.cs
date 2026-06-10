@@ -3,7 +3,7 @@ using Direct2dDemo.Shared.Elements;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
-using Color4 = Vortice.Mathematics.Color4;
+using Vortice.Mathematics;
 using D2D = Vortice.Direct2D1;
 
 namespace Direct2dDemo.Direct2D;
@@ -89,7 +89,7 @@ public class Direct2dContext : IDrawingContext, ICanvasContext
             direct2DWrapper.Context.Transform = Matrix3x2.Identity;
 
         DrawingElements.Clear();
-        direct2DWrapper.ClearCache();
+        direct2DWrapper.Direct2DResourceCache?.ClearCache();
 
         _offsetX = 0;
         _offsetY = 0;
@@ -171,12 +171,14 @@ public class Direct2dContext : IDrawingContext, ICanvasContext
     [MemberNotNullWhen(true, nameof(_commandList))]
     private bool BuildCommandList()
     {
-        var context = direct2DWrapper.Context;
-        if (context is null)
+        if (direct2DWrapper.Context is null)
+            return false;
+        if (direct2DWrapper.Direct2DResourceCache is null)
             return false;
 
         _commandList?.Dispose();
         _commandList = null;
+        var context = direct2DWrapper.Context;
         _commandList = context.CreateCommandList();
 
         D2D.ID2D1Image? oldTarget = null;
@@ -192,7 +194,7 @@ public class Direct2dContext : IDrawingContext, ICanvasContext
             foreach (var element in DrawingElements)
             {
                 // command list 里记录的是已经转换后的屏幕坐标。
-                element.Draw(direct2DWrapper, _offsetX, _offsetY, _scale);
+                element.Draw(direct2DWrapper.Direct2DResourceCache, direct2DWrapper.Context, _offsetX, _offsetY, _scale);
             }
 
             context.EndDraw();

@@ -12,9 +12,11 @@ namespace Direct2dDemo.Direct2D;
 // ※DrawLine：CapStyle.Round 大量绘制时可能明显变慢。
 internal static class DrawExtension
 {
-    public static void Draw(this IDrawingElement element, Direct2DWrapper direct2DWrapper, float offsetX, float offsetY, float scale)
+    public static void Draw(this IDrawingElement element, Direct2DResourceCache direct2DCache, ID2D1DeviceContext context, float offsetX, float offsetY, float scale)
     {
-        if (direct2DWrapper.Context == null)
+        if (direct2DCache is null)
+            return;
+        if (context is null)
             return;
 
         if (scale <= 0)
@@ -23,43 +25,42 @@ internal static class DrawExtension
         switch (element)
         {
             case PolygonGeometryElement polygonElement:
-                Draw(polygonElement, direct2DWrapper, offsetX, offsetY, scale);
+                Draw(polygonElement, direct2DCache, context, offsetX, offsetY, scale);
                 break;
 
             case EllipseElement ellipseElement:
-                Draw(ellipseElement, direct2DWrapper, offsetX, offsetY, scale);
+                Draw(ellipseElement, direct2DCache, context, offsetX, offsetY, scale);
                 break;
 
             case RectangleElement rectangleElement:
-                Draw(rectangleElement, direct2DWrapper, offsetX, offsetY, scale);
+                Draw(rectangleElement, direct2DCache, context, offsetX, offsetY, scale);
                 break;
 
             case RectangleGeometryElement rectangleGeometryElement:
-                Draw(rectangleGeometryElement, direct2DWrapper, offsetX, offsetY, scale);
+                Draw(rectangleGeometryElement, direct2DCache, context, offsetX, offsetY, scale);
                 break;
 
             case EllipseGeometryElement ellipseGeometryElement:
-                Draw(ellipseGeometryElement, direct2DWrapper, offsetX, offsetY, scale);
+                Draw(ellipseGeometryElement, direct2DCache, context, offsetX, offsetY, scale);
                 break;
 
             case TextElement textElement:
-                Draw(textElement, direct2DWrapper, offsetX, offsetY, scale);
+                Draw(textElement, direct2DCache, context, offsetX, offsetY, scale);
                 break;
 
             case LineElement lineElement:
-                Draw(lineElement, direct2DWrapper, offsetX, offsetY, scale);
+                Draw(lineElement, direct2DCache, context, offsetX, offsetY, scale);
                 break;
         }
     }
 
-    public static void Draw(LineElement element, Direct2DWrapper direct2DWrapper)
+    public static void Draw(LineElement element, Direct2DResourceCache direct2DCache, ID2D1DeviceContext context)
     {
-        Draw(element, direct2DWrapper, 0.0f, 0.0f, 1.0f);
+        Draw(element, direct2DCache, context, 0.0f, 0.0f, 1.0f);
     }
 
-    public static void Draw(LineElement element, Direct2DWrapper direct2DWrapper, float offsetX, float offsetY, float scale)
+    public static void Draw(LineElement element, Direct2DResourceCache direct2DCache, ID2D1DeviceContext context, float offsetX, float offsetY, float scale)
     {
-        var context = direct2DWrapper.Context;
         if (context == null)
             return;
 
@@ -72,8 +73,8 @@ internal static class DrawExtension
         if (element.StrokeColor.A <= 0)
             return;
 
-        var strokeBrush = direct2DWrapper.GetOrCreateSolidColorBrush(element.StrokeColor);
-        var strokeStyle = direct2DWrapper.GetOrCreateStrokeStyle(
+        var strokeBrush = direct2DCache.GetOrCreateSolidColorBrush(element.StrokeColor);
+        var strokeStyle = direct2DCache.GetOrCreateStrokeStyle(
             element.CapStyle,
             element.DashStyle,
             element.LineJoin);
@@ -86,14 +87,13 @@ internal static class DrawExtension
             strokeStyle);
     }
 
-    public static void Draw(RectangleGeometryElement element, Direct2DWrapper direct2DWrapper)
+    public static void Draw(RectangleGeometryElement element, Direct2DResourceCache direct2DCache, ID2D1DeviceContext context)
     {
-        Draw(element, direct2DWrapper, 0.0f, 0.0f, 1.0f);
+        Draw(element, direct2DCache, context, 0.0f, 0.0f, 1.0f);
     }
 
-    public static void Draw(RectangleGeometryElement element, Direct2DWrapper direct2DWrapper, float offsetX, float offsetY, float scale)
+    public static void Draw(RectangleGeometryElement element, Direct2DResourceCache direct2DCache, ID2D1DeviceContext context, float offsetX, float offsetY, float scale)
     {
-        var context = direct2DWrapper.Context;
         if (context == null)
             return;
 
@@ -103,7 +103,7 @@ internal static class DrawExtension
         if (element.Width <= 0 || element.Height <= 0)
             return;
 
-        var geometry = direct2DWrapper.GetOrCreateRectangleGeometry(element);
+        var geometry = direct2DCache.GetOrCreateRectangleGeometry(element);
         DrawGeometryWithViewTransform(
             geometry,
             element.FillStyle,
@@ -114,20 +114,19 @@ internal static class DrawExtension
             element.CapStyle,
             element.DashStyle,
             element.LineJoin,
-            direct2DWrapper,
+            direct2DCache, context,
             offsetX,
             offsetY,
             scale);
     }
 
-    public static void Draw(EllipseGeometryElement element, Direct2DWrapper direct2DWrapper)
+    public static void Draw(EllipseGeometryElement element, Direct2DResourceCache direct2DCache, ID2D1DeviceContext context)
     {
-        Draw(element, direct2DWrapper, 0.0f, 0.0f, 1.0f);
+        Draw(element, direct2DCache, context, 0.0f, 0.0f, 1.0f);
     }
 
-    public static void Draw(EllipseGeometryElement element, Direct2DWrapper direct2DWrapper, float offsetX, float offsetY, float scale)
+    public static void Draw(EllipseGeometryElement element, Direct2DResourceCache direct2DCache, ID2D1DeviceContext context, float offsetX, float offsetY, float scale)
     {
-        var context = direct2DWrapper.Context;
         if (context == null)
             return;
 
@@ -137,7 +136,7 @@ internal static class DrawExtension
         if (element.RadiusX <= 0 || element.RadiusY <= 0)
             return;
 
-        var geometry = direct2DWrapper.GetOrCreateEllipseGeometryElement(element);
+        var geometry = direct2DCache.GetOrCreateEllipseGeometryElement(element);
         DrawGeometryWithViewTransform(
             geometry,
             element.FillStyle,
@@ -148,18 +147,18 @@ internal static class DrawExtension
             element.CapStyle,
             element.DashStyle,
             element.LineJoin,
-            direct2DWrapper,
+            direct2DCache, context,
             offsetX,
             offsetY,
             scale);
     }
 
-    public static void Draw(TextElement element, Direct2DWrapper direct2DWrapper)
+    public static void Draw(TextElement element, Direct2DResourceCache direct2DCache, ID2D1DeviceContext context)
     {
-        Draw(element, direct2DWrapper, 0.0f, 0.0f, 1.0f);
+        Draw(element, direct2DCache, context, 0.0f, 0.0f, 1.0f);
     }
 
-    public static void Draw(TextElement element, Direct2DWrapper direct2DWrapper, float offsetX, float offsetY, float scale)
+    public static void Draw(TextElement element, Direct2DResourceCache direct2DCache, ID2D1DeviceContext context, float offsetX, float offsetY, float scale)
     {
         if (string.IsNullOrEmpty(element.Text))
             return;
@@ -173,11 +172,10 @@ internal static class DrawExtension
         if (element.Color.A <= 0)
             return;
 
-        var context = direct2DWrapper.Context;
         if (context == null)
             return;
 
-        if (direct2DWrapper.DwriteFactory == null)
+        if (direct2DCache == null)
             return;
 
         var scaledFontSize = ScaleLength(element.FontSize, scale);
@@ -188,11 +186,11 @@ internal static class DrawExtension
             ? "Meiryo"
             : element.FontFamily;
 
-        var textFormat = direct2DWrapper.GetOrCreateTextFormat(
+        var textFormat = direct2DCache.GetOrCreateTextFormat(
             fontFamily,
             scaledFontSize);
 
-        var brush = direct2DWrapper.GetOrCreateSolidColorBrush(element.Color);
+        var brush = direct2DCache.GetOrCreateSolidColorBrush(element.Color);
 
         var position = TransformPoint(element.Position, offsetX, offsetY, scale);
         var rect = new Rect
@@ -210,14 +208,13 @@ internal static class DrawExtension
             brush);
     }
 
-    public static void Draw(PolygonGeometryElement element, Direct2DWrapper direct2DWrapper)
+    public static void Draw(PolygonGeometryElement element, Direct2DResourceCache direct2DCache, ID2D1DeviceContext context)
     {
-        Draw(element, direct2DWrapper, 0.0f, 0.0f, 1.0f);
+        Draw(element, direct2DCache, context, 0.0f, 0.0f, 1.0f);
     }
 
-    public static void Draw(PolygonGeometryElement element, Direct2DWrapper direct2DWrapper, float offsetX, float offsetY, float scale)
+    public static void Draw(PolygonGeometryElement element, Direct2DResourceCache direct2DCache, ID2D1DeviceContext context, float offsetX, float offsetY, float scale)
     {
-        var context = direct2DWrapper.Context;
         if (context == null)
             return;
 
@@ -227,7 +224,7 @@ internal static class DrawExtension
         if (element.Points.Count < 3)
             return;
 
-        var geometry = direct2DWrapper.GetOrCreatePolygonGeometry(element);
+        var geometry = direct2DCache.GetOrCreatePolygonGeometry(element);
         DrawGeometryWithViewTransform(
             geometry,
             element.FillStyle,
@@ -238,20 +235,19 @@ internal static class DrawExtension
             element.CapStyle,
             element.DashStyle,
             element.LineJoin,
-            direct2DWrapper,
+            direct2DCache, context,
             offsetX,
             offsetY,
             scale);
     }
 
-    public static void Draw(EllipseElement element, Direct2DWrapper direct2DWrapper)
+    public static void Draw(EllipseElement element, Direct2DResourceCache direct2DCache, ID2D1DeviceContext context)
     {
-        Draw(element, direct2DWrapper, 0.0f, 0.0f, 1.0f);
+        Draw(element, direct2DCache, context, 0.0f, 0.0f, 1.0f);
     }
 
-    public static void Draw(EllipseElement element, Direct2DWrapper direct2DWrapper, float offsetX, float offsetY, float scale)
+    public static void Draw(EllipseElement element, Direct2DResourceCache direct2DCache, ID2D1DeviceContext context, float offsetX, float offsetY, float scale)
     {
-        var context = direct2DWrapper.Context;
         if (context == null)
             return;
 
@@ -273,12 +269,12 @@ internal static class DrawExtension
             element.FillColor,
             element.StrokeColor,
             element.HatchStyle,
-            direct2DWrapper);
+            direct2DCache, context);
 
         if (element.StrokeWidth > 0 && element.StrokeColor.A > 0)
         {
-            var strokeBrush = direct2DWrapper.GetOrCreateSolidColorBrush(element.StrokeColor);
-            var strokeStyle = direct2DWrapper.GetOrCreateStrokeStyle(
+            var strokeBrush = direct2DCache.GetOrCreateSolidColorBrush(element.StrokeColor);
+            var strokeStyle = direct2DCache.GetOrCreateStrokeStyle(
                 element.CapStyle,
                 element.DashStyle,
                 element.LineJoin);
@@ -291,14 +287,13 @@ internal static class DrawExtension
         }
     }
 
-    public static void Draw(RectangleElement element, Direct2DWrapper direct2DWrapper)
+    public static void Draw(RectangleElement element, Direct2DResourceCache direct2DCache, ID2D1DeviceContext context)
     {
-        Draw(element, direct2DWrapper, 0.0f, 0.0f, 1.0f);
+        Draw(element, direct2DCache, context, 0.0f, 0.0f, 1.0f);
     }
 
-    public static void Draw(RectangleElement element, Direct2DWrapper direct2DWrapper, float offsetX, float offsetY, float scale)
+    public static void Draw(RectangleElement element, Direct2DResourceCache direct2DCache, ID2D1DeviceContext context, float offsetX, float offsetY, float scale)
     {
-        var context = direct2DWrapper.Context;
         if (context == null)
             return;
 
@@ -322,12 +317,12 @@ internal static class DrawExtension
             element.FillColor,
             element.StrokeColor,
             element.HatchStyle,
-            direct2DWrapper);
+            direct2DCache, context);
 
         if (element.StrokeWidth > 0 && element.StrokeColor.A > 0)
         {
-            var strokeBrush = direct2DWrapper.GetOrCreateSolidColorBrush(element.StrokeColor);
-            var strokeStyle = direct2DWrapper.GetOrCreateStrokeStyle(
+            var strokeBrush = direct2DCache.GetOrCreateSolidColorBrush(element.StrokeColor);
+            var strokeStyle = direct2DCache.GetOrCreateStrokeStyle(
                 element.CapStyle,
                 element.DashStyle,
                 element.LineJoin);
@@ -350,7 +345,7 @@ internal static class DrawExtension
         Shared.Enums.CapStyle capStyle,
         Shared.Enums.DashStyle dashStyle,
         Shared.Enums.LineJoin lineJoin,
-        Direct2DWrapper direct2DWrapper,
+        Direct2DResourceCache direct2DCache, ID2D1DeviceContext context,
         float offsetX,
         float offsetY,
         float scale)
@@ -363,7 +358,7 @@ internal static class DrawExtension
 
             if (!IsIdentityView(offsetX, offsetY, scale))
             {
-                transformedGeometry = direct2DWrapper.CreateTransformedGeometry(
+                transformedGeometry = direct2DCache.CreateTransformedGeometry(
                     geometry,
                     CreateViewTransform(offsetX, offsetY, scale));
 
@@ -376,7 +371,7 @@ internal static class DrawExtension
                 fillColor,
                 strokeColor,
                 hatchStyle,
-                direct2DWrapper);
+                direct2DCache, context);
 
             DrawGeometryStroke(
                 renderGeometry,
@@ -385,7 +380,7 @@ internal static class DrawExtension
                 capStyle,
                 dashStyle,
                 lineJoin,
-                direct2DWrapper);
+                direct2DCache, context);
         }
         finally
         {
@@ -399,9 +394,8 @@ internal static class DrawExtension
         System.Drawing.Color fillColor,
         System.Drawing.Color hatchColor,
         HatchStyle? hatchStyle,
-        Direct2DWrapper direct2DWrapper)
+        Direct2DResourceCache direct2DCache, ID2D1DeviceContext context)
     {
-        var context = direct2DWrapper.Context;
         if (context == null)
             return;
 
@@ -415,7 +409,7 @@ internal static class DrawExtension
                     if (fillColor.A <= 0)
                         return;
 
-                    var fillBrush = direct2DWrapper.GetOrCreateSolidColorBrush(fillColor);
+                    var fillBrush = direct2DCache.GetOrCreateSolidColorBrush(fillColor);
                     context.FillGeometry(geometry, fillBrush);
                     return;
                 }
@@ -428,7 +422,7 @@ internal static class DrawExtension
                     if (fillColor.A <= 0 && hatchColor.A <= 0)
                         return;
 
-                    var hatchBrush = direct2DWrapper.GetOrCreateHatchStyle(
+                    var hatchBrush = direct2DCache.GetOrCreateHatchStyle(
                         hatchStyle.Value,
                         hatchColor,
                         fillColor);
@@ -445,9 +439,8 @@ internal static class DrawExtension
         System.Drawing.Color fillColor,
         System.Drawing.Color hatchColor,
         HatchStyle? hatchStyle,
-        Direct2DWrapper direct2DWrapper)
+        Direct2DResourceCache direct2DCache, ID2D1DeviceContext context)
     {
-        var context = direct2DWrapper.Context;
         if (context == null)
             return;
 
@@ -461,7 +454,7 @@ internal static class DrawExtension
                     if (fillColor.A <= 0)
                         return;
 
-                    var fillBrush = direct2DWrapper.GetOrCreateSolidColorBrush(fillColor);
+                    var fillBrush = direct2DCache.GetOrCreateSolidColorBrush(fillColor);
                     context.FillRectangle(rectangle, fillBrush);
                     return;
                 }
@@ -474,7 +467,7 @@ internal static class DrawExtension
                     if (fillColor.A <= 0 && hatchColor.A <= 0)
                         return;
 
-                    var hatchBrush = direct2DWrapper.GetOrCreateHatchStyle(
+                    var hatchBrush = direct2DCache.GetOrCreateHatchStyle(
                         hatchStyle.Value,
                         hatchColor,
                         fillColor);
@@ -491,9 +484,8 @@ internal static class DrawExtension
         System.Drawing.Color fillColor,
         System.Drawing.Color hatchColor,
         HatchStyle? hatchStyle,
-        Direct2DWrapper direct2DWrapper)
+        Direct2DResourceCache direct2DCache, ID2D1DeviceContext context)
     {
-        var context = direct2DWrapper.Context;
         if (context == null)
             return;
 
@@ -507,7 +499,7 @@ internal static class DrawExtension
                     if (fillColor.A <= 0)
                         return;
 
-                    var fillBrush = direct2DWrapper.GetOrCreateSolidColorBrush(fillColor);
+                    var fillBrush = direct2DCache.GetOrCreateSolidColorBrush(fillColor);
                     context.FillEllipse(ellipse, fillBrush);
                     return;
                 }
@@ -520,7 +512,7 @@ internal static class DrawExtension
                     if (fillColor.A <= 0 && hatchColor.A <= 0)
                         return;
 
-                    var hatchBrush = direct2DWrapper.GetOrCreateHatchStyle(
+                    var hatchBrush = direct2DCache.GetOrCreateHatchStyle(
                         hatchStyle.Value,
                         hatchColor,
                         fillColor);
@@ -538,9 +530,8 @@ internal static class DrawExtension
         Shared.Enums.CapStyle capStyle,
         Shared.Enums.DashStyle dashStyle,
         Shared.Enums.LineJoin lineJoin,
-        Direct2DWrapper direct2DWrapper)
+        Direct2DResourceCache direct2DCache, ID2D1DeviceContext context)
     {
-        var context = direct2DWrapper.Context;
         if (context == null)
             return;
 
@@ -550,8 +541,8 @@ internal static class DrawExtension
         if (strokeColor.A <= 0)
             return;
 
-        var strokeBrush = direct2DWrapper.GetOrCreateSolidColorBrush(strokeColor);
-        var strokeStyle = direct2DWrapper.GetOrCreateStrokeStyle(
+        var strokeBrush = direct2DCache.GetOrCreateSolidColorBrush(strokeColor);
+        var strokeStyle = direct2DCache.GetOrCreateStrokeStyle(
             capStyle,
             dashStyle,
             lineJoin);
