@@ -8,9 +8,8 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Vanara.PInvoke.Direct2D" Version="5.0.5" />
-		<PackageReference Include="Vanara.PInvoke.Direct3D11" Version="5.0.5" />
-		<PackageReference Include="Vanara.PInvoke.Printing" Version="5.0.5" />
+	  <PackageReference Include="Vortice.Direct2D1" Version="3.8.3" />
+	  <PackageReference Include="Vortice.Direct3D11" Version="3.8.3" />
 	</ItemGroup>
 
 	<ItemGroup>

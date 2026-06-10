@@ -2,10 +2,9 @@
 using Direct2dDemo.Shared.Elements;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using Vanara.PInvoke;
-using static Vanara.PInvoke.D2d1;
-using static Vanara.PInvoke.DXGI;
-using D2D1_COLOR_F = Vanara.PInvoke.DXGI.D3DCOLORVALUE;
+using System.Numerics;
+using Color4 = Vortice.Mathematics.Color4;
+using D2D = Vortice.Direct2D1;
 
 namespace Direct2dDemo.Direct2D;
 
@@ -21,9 +20,9 @@ public class Direct2dContext : IDrawingContext, ICanvasContext
 
     private readonly Direct2DWrapper direct2DWrapper = new Direct2DWrapper();
 
-    private static readonly D2D1_COLOR_F background = new D2D1_COLOR_F(1f, 1f, 1f, 1.0f);
+    private static readonly Color4 background = new Color4(1f, 1f, 1f, 1.0f);
 
-    private ID2D1CommandList? _commandList;
+    private D2D.ID2D1CommandList? _commandList;
     private bool _commandListDirty = true;
 
     private float _panStartX;
@@ -40,9 +39,10 @@ public class Direct2dContext : IDrawingContext, ICanvasContext
 
     public void Render()
     {
-        //强制更新
+        // 强制更新
         _commandListDirty = true;
-        Direct2DWrapper.SafeRelease(ref _commandList);
+        _commandList?.Dispose();
+        _commandList = null;
         RenderCurrentView();
     }
 
@@ -61,11 +61,12 @@ public class Direct2dContext : IDrawingContext, ICanvasContext
 
     private void Clear()
     {
-        if (direct2DWrapper.Context is null)
+        var context = direct2DWrapper.Context;
+        if (context is null)
             return;
 
-        direct2DWrapper.Context.SetTransform(D2D_MATRIX_3X2_F.Identity());
-        direct2DWrapper.Context.Clear(background);
+        context.Transform = Matrix3x2.Identity;
+        context.Clear(background);
     }
 
     public void HwndResized(int width, int height)
@@ -84,7 +85,8 @@ public class Direct2dContext : IDrawingContext, ICanvasContext
 
     public void ClearData()
     {
-        direct2DWrapper.Context?.SetTransform(D2D_MATRIX_3X2_F.Identity());
+        if (direct2DWrapper.Context is not null)
+            direct2DWrapper.Context.Transform = Matrix3x2.Identity;
 
         DrawingElements.Clear();
         direct2DWrapper.ClearCache();
@@ -93,6 +95,8 @@ public class Direct2dContext : IDrawingContext, ICanvasContext
         _offsetY = 0;
         _panStartX = 0;
         _panStartY = 0;
+        _panStartOffsetX = 0;
+        _panStartOffsetY = 0;
         _scale = 1.0f;
 
         InvalidateCommandList();
@@ -100,34 +104,36 @@ public class Direct2dContext : IDrawingContext, ICanvasContext
 
     public void Dispose()
     {
-        Direct2DWrapper.SafeRelease(ref _commandList);
+        _commandList?.Dispose();
+        _commandList = null;
         direct2DWrapper.Dispose();
     }
+
     public void BeginPan(int x, int y)
     {
         _panStartX = x;
         _panStartY = y;
         _panStartOffsetX = _offsetX;
         _panStartOffsetY = _offsetY;
-
     }
 
     public void Pan(int x, int y)
     {
         var deltaX = x - _panStartX;
         var deltaY = y - _panStartY;
+
         _offsetX = _panStartOffsetX + deltaX;
         _offsetY = _panStartOffsetY + deltaY;
 
         InvalidateCommandList();
         RenderCurrentView();
     }
+
     public void EndPan(int x, int y)
     {
         _panStartX = 0;
         _panStartY = 0;
     }
-
 
     public void Zoom(float zoomFactor, int centerX, int centerY)
     {
@@ -158,7 +164,8 @@ public class Direct2dContext : IDrawingContext, ICanvasContext
     private void InvalidateCommandList()
     {
         _commandListDirty = true;
-        Direct2DWrapper.SafeRelease(ref _commandList);
+        _commandList?.Dispose();
+        _commandList = null;
     }
 
     [MemberNotNullWhen(true, nameof(_commandList))]
@@ -168,18 +175,19 @@ public class Direct2dContext : IDrawingContext, ICanvasContext
         if (context is null)
             return false;
 
-        Direct2DWrapper.SafeRelease(ref _commandList);
+        _commandList?.Dispose();
+        _commandList = null;
         _commandList = context.CreateCommandList();
 
-        ID2D1Image? oldTarget = null;
+        D2D.ID2D1Image? oldTarget = null;
 
         try
         {
-            context.GetTarget(out oldTarget);
-            context.SetTarget(_commandList);
+            oldTarget = context.Target;
+            context.Target = _commandList;
 
             context.BeginDraw();
-            context.SetTransform(D2D_MATRIX_3X2_F.Identity());
+            context.Transform = Matrix3x2.Identity;
 
             foreach (var element in DrawingElements)
             {
@@ -187,7 +195,7 @@ public class Direct2dContext : IDrawingContext, ICanvasContext
                 element.Draw(direct2DWrapper, _offsetX, _offsetY, _scale);
             }
 
-            context.EndDraw().ThrowIfFailed();
+            context.EndDraw();
             _commandList.Close();
 
             _commandListDirty = false;
@@ -195,14 +203,15 @@ public class Direct2dContext : IDrawingContext, ICanvasContext
         }
         catch
         {
-            Direct2DWrapper.SafeRelease(ref _commandList);
+            _commandList?.Dispose();
+            _commandList = null;
             _commandListDirty = true;
             throw;
         }
         finally
         {
-            context.SetTarget(oldTarget);
-            Direct2DWrapper.SafeRelease(ref oldTarget);
+            context.Target = oldTarget;
+            oldTarget?.Dispose();
         }
     }
 
@@ -224,15 +233,13 @@ public class Direct2dContext : IDrawingContext, ICanvasContext
 
         // 注意：这里必须保持 Identity。
         // offset / scale 已经被 DrawExtension 烘焙进 command list 了。
-        context.SetTransform(D2D_MATRIX_3X2_F.Identity());
+        context.Transform = Matrix3x2.Identity;
         context.DrawImage(
             _commandList,
-            IntPtr.Zero,
-            null,
-            D2D1_INTERPOLATION_MODE.D2D1_INTERPOLATION_MODE_LINEAR,
-            D2D1_COMPOSITE_MODE.D2D1_COMPOSITE_MODE_SOURCE_OVER);
+            interpolationMode: D2D.InterpolationMode.Linear,
+            compositeMode: D2D.CompositeMode.SourceOver);
 
-        context.SetTransform(D2D_MATRIX_3X2_F.Identity());
+        context.Transform = Matrix3x2.Identity;
 
         direct2DWrapper.EndDraw();
         direct2DWrapper.Present();

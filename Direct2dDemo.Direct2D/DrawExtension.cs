@@ -3,8 +3,9 @@ using Direct2dDemo.Shared.Elements.DrawingElements;
 using Direct2dDemo.Shared.Elements.GeometryElements;
 using Direct2dDemo.Shared.Enums;
 using System.Drawing;
-using static Vanara.PInvoke.D2d1;
-using static Vanara.PInvoke.DXGI;
+using System.Numerics;
+using Vortice.Direct2D1;
+using Vortice.Mathematics;
 
 namespace Direct2dDemo.Direct2D;
 
@@ -194,22 +195,19 @@ internal static class DrawExtension
         var brush = direct2DWrapper.GetOrCreateSolidColorBrush(element.Color);
 
         var position = TransformPoint(element.Position, offsetX, offsetY, scale);
-        var rect = new D2D_RECT_F
+        var rect = new Rect
         {
-            left = position.X,
-            top = position.Y,
-            right = position.X + ScaleLength(10000.0f, scale),
-            bottom = position.Y + ScaleLength(10000.0f, scale)
+            Left = position.X,
+            Top = position.Y,
+            Width = ScaleLength(10000.0f, scale),
+            Height = ScaleLength(10000.0f, scale)
         };
 
         context.DrawText(
             element.Text,
-            (uint)element.Text.Length,
             textFormat,
             rect,
-            brush,
-            D2D1_DRAW_TEXT_OPTIONS.D2D1_DRAW_TEXT_OPTIONS_NONE,
-            DWRITE_MEASURING_MODE.DWRITE_MEASURING_MODE_NATURAL);
+            brush);
     }
 
     public static void Draw(PolygonGeometryElement element, Direct2DWrapper direct2DWrapper)
@@ -263,12 +261,11 @@ internal static class DrawExtension
         if (element.RadiusX <= 0 || element.RadiusY <= 0)
             return;
 
-        var ellipse = new D2D1_ELLIPSE
-        {
-            point = ToD2DPoint(element.Center, offsetX, offsetY, scale),
-            radiusX = ScaleLength(element.RadiusX, scale),
-            radiusY = ScaleLength(element.RadiusY, scale)
-        };
+        var ellipse = new Ellipse(
+             ToD2DPoint(element.Center, offsetX, offsetY, scale),
+             ScaleLength(element.RadiusX, scale),
+             ScaleLength(element.RadiusY, scale)
+        );
 
         FillEllipse(
             ellipse,
@@ -346,13 +343,13 @@ internal static class DrawExtension
     private static void DrawGeometryWithViewTransform(
         ID2D1Geometry geometry,
         FillStyle fillStyle,
-        Color fillColor,
-        Color strokeColor,
+        System.Drawing.Color fillColor,
+        System.Drawing.Color strokeColor,
         HatchStyle? hatchStyle,
         float strokeWidth,
-        CapStyle capStyle,
-        DashStyle dashStyle,
-        LineJoin lineJoin,
+        Shared.Enums.CapStyle capStyle,
+        Shared.Enums.DashStyle dashStyle,
+        Shared.Enums.LineJoin lineJoin,
         Direct2DWrapper direct2DWrapper,
         float offsetX,
         float offsetY,
@@ -392,15 +389,15 @@ internal static class DrawExtension
         }
         finally
         {
-            Direct2DWrapper.SafeRelease(ref transformedGeometry);
+            transformedGeometry?.Dispose();
         }
     }
 
     private static void FillGeometry(
         ID2D1Geometry geometry,
         FillStyle fillStyle,
-        Color fillColor,
-        Color hatchColor,
+        System.Drawing.Color fillColor,
+        System.Drawing.Color hatchColor,
         HatchStyle? hatchStyle,
         Direct2DWrapper direct2DWrapper)
     {
@@ -443,10 +440,10 @@ internal static class DrawExtension
     }
 
     private static void FillRectangle(
-        D2D_RECT_F rectangle,
+        Rect rectangle,
         FillStyle fillStyle,
-        Color fillColor,
-        Color hatchColor,
+        System.Drawing.Color fillColor,
+        System.Drawing.Color hatchColor,
         HatchStyle? hatchStyle,
         Direct2DWrapper direct2DWrapper)
     {
@@ -489,10 +486,10 @@ internal static class DrawExtension
     }
 
     private static void FillEllipse(
-        D2D1_ELLIPSE ellipse,
+        Ellipse ellipse,
         FillStyle fillStyle,
-        Color fillColor,
-        Color hatchColor,
+        System.Drawing.Color fillColor,
+        System.Drawing.Color hatchColor,
         HatchStyle? hatchStyle,
         Direct2DWrapper direct2DWrapper)
     {
@@ -536,11 +533,11 @@ internal static class DrawExtension
 
     private static void DrawGeometryStroke(
         ID2D1Geometry geometry,
-        Color strokeColor,
+        System.Drawing.Color strokeColor,
         float strokeWidth,
-        CapStyle capStyle,
-        DashStyle dashStyle,
-        LineJoin lineJoin,
+        Shared.Enums.CapStyle capStyle,
+        Shared.Enums.DashStyle dashStyle,
+        Shared.Enums.LineJoin lineJoin,
         Direct2DWrapper direct2DWrapper)
     {
         var context = direct2DWrapper.Context;
@@ -573,27 +570,27 @@ internal static class DrawExtension
             point.Y * scale + offsetY);
     }
 
-    private static D2D_POINT_2F ToD2DPoint(PointF point, float offsetX, float offsetY, float scale)
+    private static Vector2 ToD2DPoint(PointF point, float offsetX, float offsetY, float scale)
     {
         var transformed = TransformPoint(point, offsetX, offsetY, scale);
 
-        return new D2D_POINT_2F
+        return new Vector2
         {
-            x = transformed.X,
-            y = transformed.Y
+            X = transformed.X,
+            Y = transformed.Y
         };
     }
 
-    private static D2D_RECT_F ToD2DRect(PointF topLeft, float width, float height, float offsetX, float offsetY, float scale)
+    private static Rect ToD2DRect(PointF topLeft, float width, float height, float offsetX, float offsetY, float scale)
     {
         var leftTop = TransformPoint(topLeft, offsetX, offsetY, scale);
 
-        return new D2D_RECT_F
+        return new Rect
         {
-            left = leftTop.X,
-            top = leftTop.Y,
-            right = leftTop.X + ScaleLength(width, scale),
-            bottom = leftTop.Y + ScaleLength(height, scale)
+            X = leftTop.X,
+            Y = leftTop.Y,
+            Width = ScaleLength(width, scale),
+            Height = ScaleLength(height, scale)
         };
     }
 
@@ -609,9 +606,9 @@ internal static class DrawExtension
                Math.Abs(scale - 1.0f) <= 0.000001f;
     }
 
-    private static D2D_MATRIX_3X2_F CreateViewTransform(float offsetX, float offsetY, float scale)
+    private static Matrix3x2 CreateViewTransform(float offsetX, float offsetY, float scale)
     {
-        return new D2D_MATRIX_3X2_F(
+        return new Matrix3x2(
             scale, 0.0f,
             0.0f, scale,
             offsetX, offsetY);

@@ -1,47 +1,53 @@
 ﻿using Direct2dDemo.Shared.Elements.GeometryElements;
-using Direct2dDemo.Shared.Enums;
 using System.Diagnostics.CodeAnalysis;
 using System.Drawing;
+using System.Numerics;
 using System.Runtime.InteropServices;
-using Vanara.PInvoke;
-using static Vanara.PInvoke.D2d1;
-using static Vanara.PInvoke.D3D11;
-using static Vanara.PInvoke.Dwrite;
-using static Vanara.PInvoke.DXGI;
-using D2D1_COLOR_F = Vanara.PInvoke.DXGI.D3DCOLORVALUE;
+using Vortice.Mathematics;
+using D2D = Vortice.Direct2D1;
+using D3D = Vortice.Direct3D;
+using D3D11 = Vortice.Direct3D11;
+using DCommon = Vortice.DCommon;
+using DrawingColor = System.Drawing.Color;
+using DWrite = Vortice.DirectWrite;
+using DXGI = Vortice.DXGI;
+using HatchStyle = Direct2dDemo.Shared.Enums.HatchStyle;
+using SharedCapStyle = Direct2dDemo.Shared.Enums.CapStyle;
+using SharedDashStyle = Direct2dDemo.Shared.Enums.DashStyle;
+using SharedLineJoin = Direct2dDemo.Shared.Enums.LineJoin;
 
 namespace Direct2dDemo.Direct2D;
 
 internal sealed class Direct2DWrapper : IDisposable
 {
-    private ID2D1Factory1? _d2dFactory;
-    private ID2D1Device? _d2dDevice;
-    private ID2D1DeviceContext? _d2dContext;
+    private D2D.ID2D1Factory1? _d2dFactory;
+    private D2D.ID2D1Device? _d2dDevice;
+    private D2D.ID2D1DeviceContext? _d2dContext;
 
-    private ID3D11Device? _d3dDevice;
-    private ID3D11DeviceContext? _d3dContext;
+    private D3D11.ID3D11Device? _d3dDevice;
+    private D3D11.ID3D11DeviceContext? _d3dContext;
 
-    private IDXGIDevice? _dxgiDevice;
-    private IDXGIFactory2? _dxgiFactory;
-    private IDXGISwapChain1? _swapChain;
-    private IDWriteFactory? _dwriteFactory;
+    private DXGI.IDXGIDevice? _dxgiDevice;
+    private DXGI.IDXGIFactory2? _dxgiFactory;
+    private DXGI.IDXGISwapChain1? _swapChain;
+    private DWrite.IDWriteFactory? _dwriteFactory;
 
-    private ID2D1Bitmap1? _targetBitmap;
+    private D2D.ID2D1Bitmap1? _targetBitmap;
 
     private nint _hwnd;
     private int _width;
     private int _height;
 
-    private D3D_FEATURE_LEVEL _featureLevel;
+    private D3D.FeatureLevel _featureLevel;
     private bool _usingWarp;
     private bool _disposed;
     private bool _isDrawing;
 
     public int Width => _width;
     public int Height => _height;
-    public IDWriteFactory? DwriteFactory => _dwriteFactory;
+    public DWrite.IDWriteFactory? DwriteFactory => _dwriteFactory;
 
-    public ID2D1DeviceContext? Context
+    public D2D.ID2D1DeviceContext? Context
     {
         get
         {
@@ -50,20 +56,9 @@ internal sealed class Direct2DWrapper : IDisposable
         }
     }
 
-    public bool UsingWarp
-    {
-        get { return _usingWarp; }
-    }
-
-    public D3D_FEATURE_LEVEL FeatureLevel
-    {
-        get { return _featureLevel; }
-    }
-
-    public bool IsTargetReady
-    {
-        get { return _swapChain != null && _targetBitmap != null; }
-    }
+    public bool UsingWarp => _usingWarp;
+    public D3D.FeatureLevel FeatureLevel => _featureLevel;
+    public bool IsTargetReady => _swapChain != null && _targetBitmap != null;
 
     public Direct2DWrapper()
     {
@@ -107,178 +102,33 @@ internal sealed class Direct2DWrapper : IDisposable
         CreateRenderTargetBitmap();
 
         EnsureTargetReady();
-
-        _d2dContext.SetTarget(_targetBitmap);
+        _d2dContext.Target = _targetBitmap;
     }
 
-    public ID2D1Bitmap? CreateBitmap()
+    public D2D.ID2D1Bitmap1? CreateBitmap()
     {
         ThrowIfDisposed();
 
-        if (_targetBitmap is null)
+        if (_targetBitmap is null || _d2dContext is null)
             return null;
 
-        if (_d2dContext is null)
-            return null;
-
-        _targetBitmap.GetPixelSize(out var pixelSize);
+        var pixelSize = _targetBitmap.PixelSize;
         _targetBitmap.GetDpi(out var dpiX, out var dpiY);
 
-        var pixelFormat = _targetBitmap.GetPixelFormat();
-
-        var bitmapProperties = new D2D1_BITMAP_PROPERTIES1
+        var bitmapProperties = new D2D.BitmapProperties1
         {
-            pixelFormat = pixelFormat,
-            dpiX = dpiX,
-            dpiY = dpiY,
-            bitmapOptions = D2D1_BITMAP_OPTIONS.D2D1_BITMAP_OPTIONS_TARGET
+            PixelFormat = _targetBitmap.PixelFormat,
+            DpiX = dpiX,
+            DpiY = dpiY,
+            BitmapOptions = D2D.BitmapOptions.Target
         };
 
-        var newBitmap = _d2dContext.CreateBitmap(
+        return _d2dContext.CreateBitmap(
             pixelSize,
             nint.Zero,
             0,
-            bitmapProperties
-        );
-
-        return newBitmap;
+            bitmapProperties);
     }
-
-    //public void SaveAsPdf(
-    //ID2D1DeviceContext deviceContext,
-    //float pageWidthDip,
-    //float pageHeightDip,
-    //Action<ID2D1DeviceContext> draw)
-    //{
-    //    IPrintDocumentPackageTarget
-    //    this._d2dDevice.CreatePrintControl()
-
-    //    deviceContext.GetTarget(out var oldTarget);
-
-    //    var commandList = deviceContext.CreateCommandList();
-
-    //    deviceContext.SetTarget(commandList);
-
-    //    deviceContext.BeginDraw();
-
-    //    deviceContext.SetTransform(D2D_MATRIX_3X2_F.Identity());
-    //    deviceContext.Clear(new D3DCOLORVALUE(1f, 1f, 1f, 1f));
-
-    //    draw(deviceContext);
-
-    //    deviceContext.EndDraw();
-
-    //    commandList.Close();
-
-    //    deviceContext.SetTarget(oldTarget);
-    //}
-
-    //public void SaveAsPdf(
-    //    ID2D1Device d2D1Device,
-    //ID2D1DeviceContext deviceContext,
-    //IWICImagingFactory wicFactory,
-    //float pageWidthDip,
-    //float pageHeightDip,
-    //float rasterDPI,
-    //string pdfPath,
-    //Action<ID2D1DeviceContext> draw)
-    //{
-    //    const string printerName = "Microsoft Print to PDF";
-    //    const string jobName = "Direct2D Save As PDF";
-
-    //    if (File.Exists(pdfPath))
-    //        File.Delete(pdfPath);
-
-    //    System.Runtime.InteropServices.ComTypes.IStream? outputStream = null;
-    //    IPrintDocumentPackageTarget? packageTarget = null;
-    //    ID2D1PrintControl? printControl = null;
-    //    ID2D1Image? oldTarget = null;
-    //    ID2D1CommandList? commandList = null;
-
-    //    try
-    //    {
-    //        // 1. 创建输出 PDF 文件流
-    //        outputStream = CreateComFileStream(pdfPath);
-
-    //        // 2. 创建 IPrintDocumentPackageTarget
-    //        packageTarget =  CreatePrintDocumentPackageTarget(
-    //            printerName,
-    //            jobName,
-    //            outputStream);
-
-    //        var properties = new D2D1_PRINT_CONTROL_PROPERTIES()
-    //        {
-    //            fontSubset = D2D1_PRINT_FONT_SUBSET_MODE.D2D1_PRINT_FONT_SUBSET_MODE_DEFAULT,
-    //            rasterDPI = rasterDPI,
-    //            colorSpace = D2D1_COLOR_SPACE.D2D1_COLOR_SPACE_SRGB,
-
-    //        };
-    //        printControl = d2D1Device.CreatePrintControl(
-    //            wicFactory,
-    //            packageTarget,
-    //            properties);
-
-    //        // 4. 保存旧 target
-    //        deviceContext.GetTarget(out oldTarget);
-
-    //        // 5. 创建 command list
-    //        commandList = deviceContext.CreateCommandList();
-
-    //        // 6. 把 command list 设置为绘制目标
-    //        deviceContext.SetTarget(commandList);
-
-    //        deviceContext.BeginDraw();
-
-    //        deviceContext.SetTransform(D2D_MATRIX_3X2_F.Identity());
-    //        deviceContext.Clear(new D3DCOLORVALUE(1f, 1f, 1f, 1f));
-
-    //        draw(deviceContext);
-
-    //        deviceContext.EndDraw();
-
-    //        // 7. 关闭 command list
-    //        commandList.Close();
-
-    //        // 8. 恢复旧 target
-    //        deviceContext.SetTarget(oldTarget);
-
-    //        // 9. 添加页面
-    //        var pageSize = new D2D_SIZE_F
-    //        {
-    //            width = pageWidthDip,
-    //            height = pageHeightDip
-    //        };
-
-    //        printControl.AddPage(
-    //            commandList,
-    //            pageSize,
-    //            null,
-    //            out _,
-    //            out _);
-
-    //        // 10. 结束打印任务，真正生成 PDF
-    //        printControl.Close();
-    //    }
-    //    finally
-    //    {
-    //        if (oldTarget != null)
-    //        {
-    //            try
-    //            {
-    //                deviceContext.SetTarget(oldTarget);
-    //            }
-    //            catch
-    //            {
-    //                // 防止恢复 target 时二次异常
-    //            }
-    //        }
-    //        SafeRelease(ref commandList);
-    //        SafeRelease(ref oldTarget);
-    //        SafeRelease(ref printControl);
-    //        SafeRelease(ref packageTarget);
-    //        SafeRelease(ref outputStream);
-    //    }
-    //}
 
     public void TargetResized(int width, int height)
     {
@@ -310,12 +160,12 @@ internal sealed class Direct2DWrapper : IDisposable
             0,
             (uint)_width,
             (uint)_height,
-            DXGI_FORMAT.DXGI_FORMAT_UNKNOWN,
-            0
-        );
+            DXGI.Format.Unknown,
+            DXGI.SwapChainFlags.None
+        ).CheckError();
 
         CreateRenderTargetBitmap();
-        _d2dContext.SetTarget(_targetBitmap);
+        _d2dContext.Target = _targetBitmap;
     }
 
     public void BeginDraw()
@@ -326,7 +176,6 @@ internal sealed class Direct2DWrapper : IDisposable
         if (_isDrawing)
             throw new InvalidOperationException("BeginDraw has already been called.");
 
-        //_d2dContext.SetTarget(_targetBitmap);
         _d2dContext.BeginDraw();
         _isDrawing = true;
     }
@@ -343,11 +192,7 @@ internal sealed class Direct2DWrapper : IDisposable
 
         try
         {
-            _d2dContext.EndDraw().ThrowIfFailed();
-        }
-        catch
-        {
-            throw;
+            _d2dContext.EndDraw();
         }
         finally
         {
@@ -360,27 +205,25 @@ internal sealed class Direct2DWrapper : IDisposable
         ThrowIfDisposed();
         EnsureTargetReady();
 
-        _swapChain.Present(1, 0).ThrowIfFailed();
+        _swapChain.Present(1, DXGI.PresentFlags.None).CheckError();
     }
 
-    public void DrawFrame(Action<ID2D1DeviceContext> drawAction)
+    public void DrawFrame(Action<D2D.ID2D1DeviceContext> drawAction)
     {
         if (drawAction == null)
             throw new ArgumentNullException(nameof(drawAction));
+
         EnsureTargetReady();
 
         BeginDraw();
-
         drawAction(_d2dContext);
-
         EndDraw();
-
         Present();
     }
 
-    public ID2D1TransformedGeometry CreateTransformedGeometry(
-        ID2D1Geometry sourceGeometry,
-        D2D_MATRIX_3X2_F transform)
+    public D2D.ID2D1TransformedGeometry CreateTransformedGeometry(
+        D2D.ID2D1Geometry sourceGeometry,
+        Matrix3x2 transform)
     {
         ThrowIfDisposed();
 
@@ -400,35 +243,21 @@ internal sealed class Direct2DWrapper : IDisposable
         if (!_isDrawing)
             throw new InvalidOperationException("Clear must be called between BeginDraw and EndDraw.");
 
-        _d2dContext?.Clear(new D3DCOLORVALUE
-        {
-            r = r,
-            g = g,
-            b = b,
-            a = a
-        });
+        _d2dContext?.Clear(new Vortice.Mathematics.Color4(r, g, b, a));
     }
 
     [MemberNotNull(nameof(_d2dFactory))]
     private void CreateD2DFactory()
     {
-        _d2dFactory = D2D1CreateFactory<ID2D1Factory1>(
-            D2D1_FACTORY_TYPE.D2D1_FACTORY_TYPE_SINGLE_THREADED
-        );
+        _d2dFactory = D2D.D2D1.D2D1CreateFactory<D2D.ID2D1Factory1>(D2D.FactoryType.SingleThreaded);
     }
 
-    private IDWriteFactory GetDWriteFactory()
+    private DWrite.IDWriteFactory GetDWriteFactory()
     {
         if (_dwriteFactory != null)
             return _dwriteFactory;
 
-        DWriteCreateFactory(
-            DWRITE_FACTORY_TYPE.DWRITE_FACTORY_TYPE_SHARED,
-            typeof(IDWriteFactory).GUID,
-            out var factory
-        ).ThrowIfFailed();
-
-        _dwriteFactory = (IDWriteFactory)factory;
+        _dwriteFactory = DWrite.DWrite.DWriteCreateFactory<DWrite.IDWriteFactory>();
         return _dwriteFactory;
     }
 
@@ -436,68 +265,77 @@ internal sealed class Direct2DWrapper : IDisposable
     {
         var featureLevelsWith11_1 = new[]
         {
-                D3D_FEATURE_LEVEL.D3D_FEATURE_LEVEL_11_1,
-                D3D_FEATURE_LEVEL.D3D_FEATURE_LEVEL_11_0,
-                D3D_FEATURE_LEVEL.D3D_FEATURE_LEVEL_10_1,
-                D3D_FEATURE_LEVEL.D3D_FEATURE_LEVEL_10_0,
-                D3D_FEATURE_LEVEL.D3D_FEATURE_LEVEL_9_3,
-                D3D_FEATURE_LEVEL.D3D_FEATURE_LEVEL_9_2,
-                D3D_FEATURE_LEVEL.D3D_FEATURE_LEVEL_9_1
-            };
+            D3D.FeatureLevel.Level_11_1,
+            D3D.FeatureLevel.Level_11_0,
+            D3D.FeatureLevel.Level_10_1,
+            D3D.FeatureLevel.Level_10_0,
+            D3D.FeatureLevel.Level_9_3,
+            D3D.FeatureLevel.Level_9_2,
+            D3D.FeatureLevel.Level_9_1
+        };
 
         var featureLevelsWithout11_1 = new[]
         {
-                D3D_FEATURE_LEVEL.D3D_FEATURE_LEVEL_11_0,
-                D3D_FEATURE_LEVEL.D3D_FEATURE_LEVEL_10_1,
-                D3D_FEATURE_LEVEL.D3D_FEATURE_LEVEL_10_0,
-                D3D_FEATURE_LEVEL.D3D_FEATURE_LEVEL_9_3,
-                D3D_FEATURE_LEVEL.D3D_FEATURE_LEVEL_9_2,
-                D3D_FEATURE_LEVEL.D3D_FEATURE_LEVEL_9_1
-            };
+            D3D.FeatureLevel.Level_11_0,
+            D3D.FeatureLevel.Level_10_1,
+            D3D.FeatureLevel.Level_10_0,
+            D3D.FeatureLevel.Level_9_3,
+            D3D.FeatureLevel.Level_9_2,
+            D3D.FeatureLevel.Level_9_1
+        };
 
-        // 1. Try hardware with 11_1.
-        // 2. If the OS/runtime does not accept 11_1, try hardware without 11_1.
-        // 3. Last fallback: WARP.
-        if (TryCreateD3DDevice(D3D_DRIVER_TYPE.D3D_DRIVER_TYPE_HARDWARE, featureLevelsWith11_1, false))
+        if (TryCreateD3DDevice(D3D.DriverType.Hardware, featureLevelsWith11_1, false))
             return;
 
-        if (TryCreateD3DDevice(D3D_DRIVER_TYPE.D3D_DRIVER_TYPE_HARDWARE, featureLevelsWithout11_1, false))
+        if (TryCreateD3DDevice(D3D.DriverType.Hardware, featureLevelsWithout11_1, false))
             return;
 
-        if (TryCreateD3DDevice(D3D_DRIVER_TYPE.D3D_DRIVER_TYPE_WARP, featureLevelsWithout11_1, true))
+        if (TryCreateD3DDevice(D3D.DriverType.Warp, featureLevelsWithout11_1, true))
             return;
 
         throw new InvalidOperationException("Failed to create D3D11 device.");
     }
 
-    private bool TryCreateD3DDevice(D3D_DRIVER_TYPE driverType, D3D_FEATURE_LEVEL[] featureLevels, bool usingWarp)
+    private bool TryCreateD3DDevice(
+        D3D.DriverType driverType,
+        D3D.FeatureLevel[] featureLevels,
+        bool usingWarp)
     {
+        D3D11.ID3D11Device? d3dDevice = null;
+        D3D11.ID3D11DeviceContext? d3dContext = null;
+
         try
         {
-            var flags = D3D11_CREATE_DEVICE_FLAG.D3D11_CREATE_DEVICE_BGRA_SUPPORT;
+            var flags = D3D11.DeviceCreationFlags.BgraSupport;
 
-            D3D11CreateDevice(
-                null,
-                driverType,
+            var result = D3D11.D3D11.D3D11CreateDevice(
                 IntPtr.Zero,
+                driverType,
                 flags,
                 featureLevels,
-                (uint)featureLevels.Length,
-                D3D11_SDK_VERSION,
-                out _d3dDevice,
+                out d3dDevice,
                 out _featureLevel,
-                out _d3dContext
-            ).ThrowIfFailed();
+                out d3dContext);
 
+            if (result.Failure)
+                return false;
+
+            _d3dDevice = d3dDevice;
+            _d3dContext = d3dContext;
             _usingWarp = usingWarp;
-            _dxgiDevice = _d3dDevice as IDXGIDevice;
+            _dxgiDevice = _d3dDevice.QueryInterface<DXGI.IDXGIDevice>();
             return true;
         }
         catch
         {
-            SafeRelease(ref _dxgiDevice);
-            SafeRelease(ref _d3dContext);
-            SafeRelease(ref _d3dDevice);
+            d3dContext?.Dispose();
+            d3dDevice?.Dispose();
+            _dxgiDevice?.Dispose();
+            _dxgiDevice = null;
+            _d3dContext?.Dispose();
+            _d3dContext = null;
+            _d3dDevice?.Dispose();
+            _d3dDevice = null;
             return false;
         }
     }
@@ -510,18 +348,13 @@ internal sealed class Direct2DWrapper : IDisposable
         if (_dxgiDevice is null)
             throw new InvalidOperationException("DXGI device is not created.");
 
-        _d2dFactory.CreateDevice(_dxgiDevice, out ID2D1Device device);
-        if (device is null)
+        _d2dDevice = _d2dFactory.CreateDevice(_dxgiDevice);
+        if (_d2dDevice is null)
             throw new InvalidOperationException("Failed to create Direct2D device.");
-        _d2dDevice = device;
 
-        var context = _d2dDevice.CreateDeviceContext(
-               D2D1_DEVICE_CONTEXT_OPTIONS.D2D1_DEVICE_CONTEXT_OPTIONS_NONE
-           );
-        if (context is null)
+        _d2dContext = _d2dDevice.CreateDeviceContext();
+        if (_d2dContext is null)
             throw new InvalidOperationException("Failed to create Direct2D device context.");
-
-        _d2dContext = context;
     }
 
     private void CreateSwapChain()
@@ -529,32 +362,28 @@ internal sealed class Direct2DWrapper : IDisposable
         if (_dxgiDevice is null)
             throw new InvalidOperationException("DXGI device is not created.");
 
-        IDXGIAdapter? adapter = null;
+        DXGI.IDXGIAdapter? adapter = null;
 
         try
         {
             adapter = _dxgiDevice.GetAdapter();
-            _dxgiFactory = adapter.GetParent<IDXGIFactory2>();
+            _dxgiFactory = adapter.GetParent<DXGI.IDXGIFactory2>();
             if (_dxgiFactory is null)
-                throw new InvalidOperationException("Failed to create dxgi factory.");
+                throw new InvalidOperationException("Failed to create DXGI factory.");
 
-            var desc = new DXGI_SWAP_CHAIN_DESC1
+            var desc = new DXGI.SwapChainDescription1
             {
                 Width = (uint)_width,
                 Height = (uint)_height,
-                Format = DXGI_FORMAT.DXGI_FORMAT_B8G8R8A8_UNORM,
+                Format = DXGI.Format.B8G8R8A8_UNorm,
                 Stereo = false,
-                SampleDesc = new DXGI_SAMPLE_DESC
-                {
-                    Count = 1,
-                    Quality = 0
-                },
-                BufferUsage = DXGI_USAGE.DXGI_USAGE_RENDER_TARGET_OUTPUT,
+                SampleDescription = new DXGI.SampleDescription(1, 0),
+                BufferUsage = DXGI.Usage.RenderTargetOutput,
                 BufferCount = 2,
-                Scaling = DXGI_SCALING.DXGI_SCALING_STRETCH,
-                SwapEffect = DXGI_SWAP_EFFECT.DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL,
-                AlphaMode = DXGI_ALPHA_MODE.DXGI_ALPHA_MODE_IGNORE,
-                Flags = 0
+                Scaling = DXGI.Scaling.Stretch,
+                SwapEffect = DXGI.SwapEffect.FlipSequential,
+                AlphaMode = DXGI.AlphaMode.Ignore,
+                Flags = DXGI.SwapChainFlags.None
             };
 
             if (_d3dDevice is null)
@@ -565,16 +394,14 @@ internal sealed class Direct2DWrapper : IDisposable
                 _hwnd,
                 desc,
                 null,
-                null
-            );
+                null);
 
             // Prevent DXGI from handling Alt+Enter automatically.
-            // If this enum is unavailable in your Vanara version, this line can be removed safely.
-            _dxgiFactory.MakeWindowAssociation(_hwnd, DXGI_MWA.DXGI_MWA_NO_ALT_ENTER);
+            _dxgiFactory.MakeWindowAssociation(_hwnd, DXGI.WindowAssociationFlags.IgnoreAltEnter);
         }
         finally
         {
-            SafeRelease(ref adapter);
+            adapter?.Dispose();
         }
     }
 
@@ -585,67 +412,69 @@ internal sealed class Direct2DWrapper : IDisposable
         if (_swapChain is null)
             throw new InvalidOperationException("Swap chain is not created.");
 
-        IDXGISurface? backBuffer = null;
-        nint bitmapPropertiesPtr = nint.Zero;
+        DXGI.IDXGISurface? backBuffer = null;
 
         try
         {
-            backBuffer = _swapChain.GetBuffer<IDXGISurface>(0);
+            backBuffer = _swapChain.GetBuffer<DXGI.IDXGISurface>(0);
 
-            var bitmapProperties = new D2D1_BITMAP_PROPERTIES1
+            var bitmapProperties = new D2D.BitmapProperties1
             {
-                pixelFormat = new D2D1_PIXEL_FORMAT
-                {
-                    format = DXGI_FORMAT.DXGI_FORMAT_B8G8R8A8_UNORM,
-                    alphaMode = D2D1_ALPHA_MODE.D2D1_ALPHA_MODE_IGNORE
-                },
-                dpiX = 96.0f,
-                dpiY = 96.0f,
-                bitmapOptions =
-                    D2D1_BITMAP_OPTIONS.D2D1_BITMAP_OPTIONS_TARGET |
-                    D2D1_BITMAP_OPTIONS.D2D1_BITMAP_OPTIONS_CANNOT_DRAW
+                PixelFormat = new DCommon.PixelFormat(
+                    DXGI.Format.B8G8R8A8_UNorm,
+                    DCommon.AlphaMode.Ignore),
+                DpiX = 96.0f,
+                DpiY = 96.0f,
+                BitmapOptions = D2D.BitmapOptions.Target | D2D.BitmapOptions.CannotDraw
             };
-
-            bitmapPropertiesPtr = Marshal.AllocHGlobal(Marshal.SizeOf<D2D1_BITMAP_PROPERTIES1>());
-            Marshal.StructureToPtr(bitmapProperties, bitmapPropertiesPtr, false);
 
             _targetBitmap = _d2dContext.CreateBitmapFromDxgiSurface(
                 backBuffer,
-                bitmapPropertiesPtr
-            );
+                bitmapProperties);
         }
         finally
         {
-            if (bitmapPropertiesPtr != nint.Zero)
-                Marshal.FreeHGlobal(bitmapPropertiesPtr);
-            SafeRelease(ref backBuffer);
+            backBuffer?.Dispose();
         }
     }
 
     private void ReleaseTargetBitmapOnly()
     {
         if (_d2dContext != null)
-            _d2dContext.SetTarget(null);
+            _d2dContext.Target = null;
 
-        SafeRelease(ref _targetBitmap);
+        _targetBitmap?.Dispose();
+        _targetBitmap = null;
     }
 
     private void ReleaseHwndTarget()
     {
         ReleaseTargetBitmapOnly();
-        SafeRelease(ref _swapChain);
-        SafeRelease(ref _dxgiFactory);
+        _swapChain?.Dispose();
+        _swapChain = null;
+        _dxgiFactory?.Dispose();
+        _dxgiFactory = null;
     }
 
     private void ReleaseDeviceResources()
     {
-        SafeRelease(ref _dwriteFactory);
-        SafeRelease(ref _d2dContext);
-        SafeRelease(ref _d2dDevice);
-        SafeRelease(ref _d2dFactory);
-        SafeRelease(ref _dxgiDevice);
-        SafeRelease(ref _d3dContext);
-        SafeRelease(ref _d3dDevice);
+        ClearCache();
+
+        _dwriteFactory?.Dispose();
+        _dwriteFactory = null;
+
+        _d2dContext?.Dispose();
+        _d2dContext = null;
+        _d2dDevice?.Dispose();
+        _d2dDevice = null;
+        _d2dFactory?.Dispose();
+        _d2dFactory = null;
+        _dxgiDevice?.Dispose();
+        _dxgiDevice = null;
+        _d3dContext?.Dispose();
+        _d3dContext = null;
+        _d3dDevice?.Dispose();
+        _d3dDevice = null;
     }
 
     public void Dispose()
@@ -697,56 +526,24 @@ internal sealed class Direct2DWrapper : IDisposable
             throw new ObjectDisposedException(nameof(Direct2DWrapper));
     }
 
-    public static void SafeRelease<T>(T? comObject) where T : class
-    {
-        if (comObject == null)
-            return;
-
-        try
-        {
-            if (Marshal.IsComObject(comObject))
-            {
-                Marshal.FinalReleaseComObject(comObject);
-            }
-            else if (comObject is IDisposable disposable)
-            {
-                disposable.Dispose();
-            }
-        }
-        catch
-        {
-        }
-        finally
-        {
-        }
-    }
-
-    public static void SafeRelease<T>(ref T? comObject)
-        where T : class
-    {
-        SafeRelease(comObject);
-        comObject = null;
-    }
-
     #region Cache
 
-    //各10_000 有cache 时，372ms  ,无cache时，441ms
-    //耗时差距似乎不太明显
-    private Dictionary<Color, ID2D1SolidColorBrush> _solidColorBrushCacahe = new();
+    // 各 10_000：有 cache 时约 372ms，无 cache 时约 441ms。
+    private readonly Dictionary<DrawingColor, D2D.ID2D1SolidColorBrush> _solidColorBrushCache = new();
 
-    private readonly Dictionary<(string FontFamily, float FontSize), IDWriteTextFormat> _textFormatCache = new();
-    private readonly Dictionary<PolygonGeometryElement, ID2D1PathGeometry> _polygonGeometryCache = new();
-    private readonly Dictionary<RectangleGeometryElement, ID2D1RectangleGeometry> _rectangleGeometryCache = new();
-    private readonly Dictionary<EllipseGeometryElement, ID2D1EllipseGeometry> _ellipseGeometryCache = new();
-    private readonly Dictionary<D2D1_STROKE_STYLE_PROPERTIES, ID2D1StrokeStyle> _strokeStyleCache = new();
-    private readonly Dictionary<(HatchStyle HatchStyle, Color HatchColor, Color BackgroundColor, int CellSize, int LineWidth), ID2D1BitmapBrush> _hatchBrushCache = new();
+    private readonly Dictionary<(string FontFamily, float FontSize), DWrite.IDWriteTextFormat> _textFormatCache = new();
+    private readonly Dictionary<PolygonGeometryElement, D2D.ID2D1PathGeometry> _polygonGeometryCache = new();
+    private readonly Dictionary<RectangleGeometryElement, D2D.ID2D1RectangleGeometry> _rectangleGeometryCache = new();
+    private readonly Dictionary<EllipseGeometryElement, D2D.ID2D1EllipseGeometry> _ellipseGeometryCache = new();
+    private readonly Dictionary<D2D.StrokeStyleProperties, D2D.ID2D1StrokeStyle> _strokeStyleCache = new();
+    private readonly Dictionary<(HatchStyle HatchStyle, DrawingColor HatchColor, DrawingColor BackgroundColor, int CellSize, int LineWidth), D2D.ID2D1BitmapBrush> _hatchBrushCache = new();
 
-    public ID2D1BitmapBrush GetOrCreateHatchStyle(
-                                                  HatchStyle hatchStyle,
-                                                  Color hatchColor,
-                                                  Color backgroundColor,
-                                                  int cellSize = 8,
-                                                  int lineWidth = 1)
+    public D2D.ID2D1BitmapBrush GetOrCreateHatchStyle(
+        HatchStyle hatchStyle,
+        DrawingColor hatchColor,
+        DrawingColor backgroundColor,
+        int cellSize = 8,
+        int lineWidth = 1)
     {
         if (_d2dContext is null)
             throw new InvalidOperationException("Direct2D device context is not created.");
@@ -769,21 +566,21 @@ internal sealed class Direct2DWrapper : IDisposable
             cellSize,
             lineWidth);
 
-        ID2D1BitmapBrush? brush = null;
+        D2D.ID2D1BitmapBrush? brush = null;
 
         try
         {
-            var bitmapBrushProperties = new D2D1_BITMAP_BRUSH_PROPERTIES
+            var bitmapBrushProperties = new D2D.BitmapBrushProperties
             {
-                extendModeX = D2D1_EXTEND_MODE.D2D1_EXTEND_MODE_WRAP,
-                extendModeY = D2D1_EXTEND_MODE.D2D1_EXTEND_MODE_WRAP,
-                interpolationMode = D2D1_BITMAP_INTERPOLATION_MODE.D2D1_BITMAP_INTERPOLATION_MODE_NEAREST_NEIGHBOR
+                ExtendModeX = D2D.ExtendMode.Wrap,
+                ExtendModeY = D2D.ExtendMode.Wrap,
+                InterpolationMode = D2D.BitmapInterpolationMode.NearestNeighbor
             };
 
-            var brushProperties = new D2D1_BRUSH_PROPERTIES
+            var brushProperties = new D2D.BrushProperties
             {
-                opacity = 1.0f,
-                transform = D2D_MATRIX_3X2_F.Identity()
+                Opacity = 1.0f,
+                Transform = Matrix3x2.Identity
             };
 
             brush = _d2dContext.CreateBitmapBrush(
@@ -792,26 +589,25 @@ internal sealed class Direct2DWrapper : IDisposable
                 brushProperties);
 
             _hatchBrushCache[key] = brush;
-
             return brush;
         }
         catch
         {
-            SafeRelease(ref brush);
+            brush?.Dispose();
             throw;
         }
         finally
         {
-            SafeRelease(ref bitmap);
+            bitmap?.Dispose();
         }
     }
 
-    private ID2D1Bitmap CreateHatchBitmap(
-    HatchStyle hatchStyle,
-    Color hatchColor,
-    Color backgroundColor,
-    int cellSize,
-    int lineWidth)
+    private D2D.ID2D1Bitmap CreateHatchBitmap(
+        HatchStyle hatchStyle,
+        DrawingColor hatchColor,
+        DrawingColor backgroundColor,
+        int cellSize,
+        int lineWidth)
     {
         if (_d2dContext is null)
             throw new InvalidOperationException("Direct2D device context is not created.");
@@ -831,22 +627,18 @@ internal sealed class Direct2DWrapper : IDisposable
             for (var x = 0; x < cellSize; x++)
             {
                 if (IsHatchPixel(hatchStyle, x, y, cellSize, lineWidth))
-                {
                     WritePixel(data, cellSize, x, y, hatchColor);
-                }
             }
         }
 
-        var bitmapProperties = new D2D1_BITMAP_PROPERTIES1
+        var bitmapProperties = new D2D.BitmapProperties1
         {
-            pixelFormat = new D2D1_PIXEL_FORMAT
-            {
-                format = DXGI_FORMAT.DXGI_FORMAT_B8G8R8A8_UNORM,
-                alphaMode = D2D1_ALPHA_MODE.D2D1_ALPHA_MODE_PREMULTIPLIED
-            },
-            dpiX = 96.0f,
-            dpiY = 96.0f,
-            bitmapOptions = D2D1_BITMAP_OPTIONS.D2D1_BITMAP_OPTIONS_NONE
+            PixelFormat = new DCommon.PixelFormat(
+                DXGI.Format.B8G8R8A8_UNorm,
+                DCommon.AlphaMode.Premultiplied),
+            DpiX = 96.0f,
+            DpiY = 96.0f,
+            BitmapOptions = D2D.BitmapOptions.None
         };
 
         var dataPtr = nint.Zero;
@@ -857,11 +649,7 @@ internal sealed class Direct2DWrapper : IDisposable
             Marshal.Copy(data, 0, dataPtr, data.Length);
 
             return _d2dContext.CreateBitmap(
-                new D2D_SIZE_U
-                {
-                    width = (uint)cellSize,
-                    height = (uint)cellSize
-                },
+                new SizeI(cellSize, cellSize),
                 dataPtr,
                 (uint)(cellSize * 4),
                 bitmapProperties);
@@ -874,14 +662,13 @@ internal sealed class Direct2DWrapper : IDisposable
     }
 
     private static void WritePixel(
-                                     byte[] data,
-                                     int width,
-                                     int x,
-                                     int y,
-                                     Color color)
+        byte[] data,
+        int width,
+        int x,
+        int y,
+        DrawingColor color)
     {
         var offset = (y * width + x) * 4;
-
         var alpha = color.A / 255.0f;
 
         data[offset + 0] = (byte)(color.B * alpha);
@@ -891,11 +678,11 @@ internal sealed class Direct2DWrapper : IDisposable
     }
 
     private static bool IsHatchPixel(
-                                     HatchStyle hatchStyle,
-                                     int x,
-                                     int y,
-                                     int cellSize,
-                                     int lineWidth)
+        HatchStyle hatchStyle,
+        int x,
+        int y,
+        int cellSize,
+        int lineWidth)
     {
         return hatchStyle switch
         {
@@ -923,31 +710,34 @@ internal sealed class Direct2DWrapper : IDisposable
         };
     }
 
-    public ID2D1StrokeStyle GetOrCreateStrokeStyle(CapStyle capStyle, DashStyle dashStyle, LineJoin lineJoin = LineJoin.Miter)
+    public D2D.ID2D1StrokeStyle GetOrCreateStrokeStyle(
+        SharedCapStyle capStyle,
+        SharedDashStyle dashStyle,
+        SharedLineJoin lineJoin = SharedLineJoin.Miter)
     {
         if (_d2dFactory is null)
             throw new InvalidOperationException("Direct2D factory is not created.");
-        var props = new D2D1_STROKE_STYLE_PROPERTIES
+
+        var props = new D2D.StrokeStyleProperties
         {
-            startCap = (D2D1_CAP_STYLE)capStyle,
-            endCap = (D2D1_CAP_STYLE)capStyle,
-            dashCap = (D2D1_CAP_STYLE)capStyle,
-            miterLimit = 10.0f,
-            dashStyle = (D2D1_DASH_STYLE)dashStyle,
-            lineJoin = (D2D1_LINE_JOIN)lineJoin,
-            dashOffset = 0.0f
+            StartCap = (D2D.CapStyle)capStyle,
+            EndCap = (D2D.CapStyle)capStyle,
+            DashCap = (D2D.CapStyle)capStyle,
+            MiterLimit = 10.0f,
+            DashStyle = (D2D.DashStyle)dashStyle,
+            LineJoin = (D2D.LineJoin)lineJoin,
+            DashOffset = 0.0f
         };
 
         if (_strokeStyleCache.TryGetValue(props, out var cached))
             return cached;
 
-        var strokeStyle = this._d2dFactory.CreateStrokeStyle(props, null!, 0);
-
+        var strokeStyle = _d2dFactory.CreateStrokeStyle(props);
         _strokeStyleCache[props] = strokeStyle;
         return strokeStyle;
     }
 
-    public ID2D1EllipseGeometry GetOrCreateEllipseGeometryElement(EllipseGeometryElement element)
+    public D2D.ID2D1EllipseGeometry GetOrCreateEllipseGeometryElement(EllipseGeometryElement element)
     {
         if (_ellipseGeometryCache.TryGetValue(element, out var cached))
             return cached;
@@ -961,34 +751,27 @@ internal sealed class Direct2DWrapper : IDisposable
         if (element.RadiusY <= 0)
             throw new ArgumentOutOfRangeException(nameof(element.RadiusY));
 
-        var ellipse = new D2D1_ELLIPSE
-        {
-            point = new D2D_POINT_2F
-            {
-                x = element.Center.X,
-                y = element.Center.Y
-            },
-            radiusX = element.RadiusX,
-            radiusY = element.RadiusY
-        };
-
-        ID2D1EllipseGeometry? geometry = null;
+        D2D.ID2D1EllipseGeometry? geometry = null;
 
         try
         {
-            geometry = _d2dFactory.CreateEllipseGeometry(ellipse);
+            var ellipse = new D2D.Ellipse(
+                new Vector2(element.Center.X, element.Center.Y),
+                element.RadiusX,
+                element.RadiusY);
 
+            geometry = _d2dFactory.CreateEllipseGeometry(ellipse);
             _ellipseGeometryCache[element] = geometry;
             return geometry;
         }
         catch
         {
-            SafeRelease(ref geometry);
+            geometry?.Dispose();
             throw;
         }
     }
 
-    public ID2D1RectangleGeometry GetOrCreateRectangleGeometry(RectangleGeometryElement element)
+    public D2D.ID2D1RectangleGeometry GetOrCreateRectangleGeometry(RectangleGeometryElement element)
     {
         if (_rectangleGeometryCache.TryGetValue(element, out var cached))
             return cached;
@@ -1002,33 +785,30 @@ internal sealed class Direct2DWrapper : IDisposable
         if (element.Height <= 0)
             throw new ArgumentOutOfRangeException(nameof(element.Height));
 
-        var rectangle = new D2D_RECT_F
-        {
-            left = element.TopLeft.X,
-            top = element.TopLeft.Y,
-            right = element.TopLeft.X + element.Width,
-            bottom = element.TopLeft.Y + element.Height
-        };
-
-        ID2D1RectangleGeometry? geometry = null;
+        D2D.ID2D1RectangleGeometry? geometry = null;
 
         try
         {
-            geometry = _d2dFactory.CreateRectangleGeometry(rectangle);
+            var rectangle = new RectangleF(
+                element.TopLeft.X,
+                element.TopLeft.Y,
+                element.Width,
+                element.Height);
 
+            geometry = _d2dFactory.CreateRectangleGeometry(rectangle);
             _rectangleGeometryCache[element] = geometry;
             return geometry;
         }
         catch
         {
-            SafeRelease(ref geometry);
+            geometry?.Dispose();
             throw;
         }
     }
 
-    public ID2D1PathGeometry GetOrCreatePolygonGeometry(PolygonGeometryElement element)
+    public D2D.ID2D1PathGeometry GetOrCreatePolygonGeometry(PolygonGeometryElement element)
     {
-        //not good to use PolygonElement as key directly, but for demo purpose it's fine.
+        // not good to use PolygonElement as key directly, but for demo purpose it's fine.
         if (_polygonGeometryCache.TryGetValue(element, out var cached))
             return cached;
 
@@ -1036,43 +816,41 @@ internal sealed class Direct2DWrapper : IDisposable
             throw new InvalidOperationException("Direct2D factory is not created.");
 
         var geometry = _d2dFactory.CreatePathGeometry();
-
-        ID2D1GeometrySink? sink = null;
+        D2D.ID2D1GeometrySink? sink = null;
 
         try
         {
             sink = geometry.Open();
 
-            sink.SetFillMode(D2D1_FILL_MODE.D2D1_FILL_MODE_WINDING);
+            sink.SetFillMode(D2D.FillMode.Winding);
 
             sink.BeginFigure(
-                element.Points[0],
-                D2D1_FIGURE_BEGIN.D2D1_FIGURE_BEGIN_FILLED);
+                element.Points[0].ToVector2(),
+                D2D.FigureBegin.Filled);
 
             for (var i = 1; i < element.Points.Count; i++)
             {
-                sink.AddLine(element.Points[i]);
+                sink.AddLine(element.Points[i].ToVector2());
             }
 
-            sink.EndFigure(D2D1_FIGURE_END.D2D1_FIGURE_END_CLOSED);
-
-            sink.Close().ThrowIfFailed();
+            sink.EndFigure(D2D.FigureEnd.Closed);
+            sink.Close();
 
             _polygonGeometryCache[element] = geometry;
             return geometry;
         }
         catch
         {
-            SafeRelease(ref geometry);
+            geometry?.Dispose();
             throw;
         }
         finally
         {
-            SafeRelease(ref sink);
+            sink?.Dispose();
         }
     }
 
-    public IDWriteTextFormat GetOrCreateTextFormat(string fontFamily, float fontSize)
+    public DWrite.IDWriteTextFormat GetOrCreateTextFormat(string fontFamily, float fontSize)
     {
         if (DwriteFactory is null)
             throw new InvalidOperationException("DirectWrite factory is not created.");
@@ -1092,91 +870,86 @@ internal sealed class Direct2DWrapper : IDisposable
         var textFormat = DwriteFactory.CreateTextFormat(
             fontFamily,
             null,
-            DWRITE_FONT_WEIGHT.DWRITE_FONT_WEIGHT_NORMAL,
-            DWRITE_FONT_STYLE.DWRITE_FONT_STYLE_NORMAL,
-            DWRITE_FONT_STRETCH.DWRITE_FONT_STRETCH_NORMAL,
+            DWrite.FontWeight.Normal,
+            DWrite.FontStyle.Normal,
+            DWrite.FontStretch.Normal,
             fontSize,
-            "ja-JP"
-        );
+            "ja-JP");
 
-        textFormat.SetTextAlignment(
-            DWRITE_TEXT_ALIGNMENT.DWRITE_TEXT_ALIGNMENT_LEADING
-        );
-
-        textFormat.SetParagraphAlignment(
-            DWRITE_PARAGRAPH_ALIGNMENT.DWRITE_PARAGRAPH_ALIGNMENT_NEAR
-        );
+        textFormat.TextAlignment = DWrite.TextAlignment.Leading;
+        textFormat.ParagraphAlignment = DWrite.ParagraphAlignment.Near;
 
         _textFormatCache[key] = textFormat;
         return textFormat;
     }
 
-    public ID2D1SolidColorBrush GetOrCreateSolidColorBrush(Color color)
+    public D2D.ID2D1SolidColorBrush GetOrCreateSolidColorBrush(DrawingColor color)
     {
-        if (_solidColorBrushCacahe.TryGetValue(color, out var cache))
-        {
+        if (_solidColorBrushCache.TryGetValue(color, out var cache))
             return cache;
-        }
 
         var context = _d2dContext;
         if (context is null)
             throw new InvalidOperationException("Direct2D device context is not created.");
 
-        var new_brush = context.CreateSolidColorBrush(ToD2DColor(color));
-        if (new_brush is null)
+        var newBrush = context.CreateSolidColorBrush(ToD2DColor(color));
+        if (newBrush is null)
             throw new InvalidOperationException("Failed to create solid color brush.");
 
-        _solidColorBrushCacahe[color] = new_brush;
-
-        return new_brush;
+        _solidColorBrushCache[color] = newBrush;
+        return newBrush;
     }
 
-    private static D2D1_COLOR_F ToD2DColor(Color color)
+    private static Vortice.Mathematics.Color4 ToD2DColor(DrawingColor color)
     {
-        return new D2D1_COLOR_F
-        {
-            r = color.R / 255.0f,
-            g = color.G / 255.0f,
-            b = color.B / 255.0f,
-            a = color.A / 255.0f
-        };
+        return new Vortice.Mathematics.Color4(
+            color.R / 255.0f,
+            color.G / 255.0f,
+            color.B / 255.0f,
+            color.A / 255.0f);
     }
 
     public void ClearCache()
     {
-        foreach (var item in _solidColorBrushCacahe.Values)
+        foreach (var item in _solidColorBrushCache.Values)
         {
-            SafeRelease(item);
+            item?.Dispose();
         }
-        _solidColorBrushCacahe.Clear();
+        _solidColorBrushCache.Clear();
+
         foreach (var item in _textFormatCache.Values)
         {
-            SafeRelease(item);
+            item?.Dispose();
         }
         _textFormatCache.Clear();
+
         foreach (var item in _polygonGeometryCache.Values)
         {
-            SafeRelease(item);
+            item?.Dispose();
         }
         _polygonGeometryCache.Clear();
+
         foreach (var item in _rectangleGeometryCache.Values)
         {
-            SafeRelease(item);
+            item?.Dispose();
         }
         _rectangleGeometryCache.Clear();
+
         foreach (var item in _ellipseGeometryCache.Values)
         {
-            SafeRelease(item);
+            item?.Dispose();
         }
         _ellipseGeometryCache.Clear();
+
         foreach (var item in _strokeStyleCache.Values)
         {
-            SafeRelease(item);
+            item?.Dispose();
         }
         _strokeStyleCache.Clear();
+
         foreach (var item in _hatchBrushCache.Values)
         {
-            SafeRelease(item);
+            item?.Dispose();
         }
         _hatchBrushCache.Clear();
     }
