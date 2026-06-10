@@ -1,9 +1,7 @@
 ﻿using Direct2dDemo.Shared;
 using Direct2dDemo.Shared.Elements;
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
-using Vortice.Direct2D1;
 using Vortice.Mathematics;
 
 namespace Direct2dDemo.Direct2D;
@@ -22,9 +20,6 @@ public class Direct2dContext : IDrawingContext, ICanvasContext
 
     private static readonly Color4 background = new Color4(1f, 1f, 1f, 1.0f);
 
-    private ID2D1CommandList? _commandList;
-    private bool _commandListDirty = true;
-
     private float _panStartX;
     private float _panStartY;
     private float _offsetX;
@@ -39,10 +34,6 @@ public class Direct2dContext : IDrawingContext, ICanvasContext
 
     public void Render()
     {
-        // 强制更新
-        _commandListDirty = true;
-        _commandList?.Dispose();
-        _commandList = null;
         RenderCurrentView();
     }
 
@@ -53,10 +44,33 @@ public class Direct2dContext : IDrawingContext, ICanvasContext
 
         stopwatch.Restart();
 
-        RenderCommandList();
+        InternalRender();
 
         stopwatch.Stop();
         Rendered?.Invoke(this, stopwatch.ElapsedMilliseconds);
+    }
+
+    private void InternalRender()
+    {
+        if (direct2DWrapper.Context is null)
+            return;
+        if (direct2DWrapper.Direct2DResourceCache is null)
+            return;
+
+        var context = direct2DWrapper.Context;
+
+        context.BeginDraw();
+
+        this.Clear();
+        foreach (var element in DrawingElements)
+        {
+            // command list 里记录的是已经转换后的屏幕坐标。
+            element.Draw(direct2DWrapper.Direct2DResourceCache, direct2DWrapper.Context, _offsetX, _offsetY, _scale);
+        }
+
+        context.EndDraw();
+
+        direct2DWrapper.Present();
     }
 
     private void Clear()
@@ -72,14 +86,12 @@ public class Direct2dContext : IDrawingContext, ICanvasContext
     public void HwndResized(int width, int height)
     {
         direct2DWrapper.TargetResized(width, height);
-        InvalidateCommandList();
         RenderCurrentView();
     }
 
     public void Initialize(nint hwnd, int width, int height)
     {
         direct2DWrapper.SetTarget(hwnd, width, height);
-        InvalidateCommandList();
         RenderCurrentView();
     }
 
@@ -98,14 +110,10 @@ public class Direct2dContext : IDrawingContext, ICanvasContext
         _panStartOffsetX = 0;
         _panStartOffsetY = 0;
         _scale = 1.0f;
-
-        InvalidateCommandList();
     }
 
     public void Dispose()
     {
-        _commandList?.Dispose();
-        _commandList = null;
         direct2DWrapper.Dispose();
     }
 
@@ -125,7 +133,6 @@ public class Direct2dContext : IDrawingContext, ICanvasContext
         _offsetX = _panStartOffsetX + deltaX;
         _offsetY = _panStartOffsetY + deltaY;
 
-        InvalidateCommandList();
         RenderCurrentView();
     }
 
@@ -157,94 +164,7 @@ public class Direct2dContext : IDrawingContext, ICanvasContext
         _offsetX = centerX - worldX * newScale;
         _offsetY = centerY - worldY * newScale;
 
-        InvalidateCommandList();
         RenderCurrentView();
-    }
-
-    private void InvalidateCommandList()
-    {
-        _commandListDirty = true;
-        _commandList?.Dispose();
-        _commandList = null;
-    }
-
-    [MemberNotNullWhen(true, nameof(_commandList))]
-    private bool BuildCommandList()
-    {
-        if (direct2DWrapper.Context is null)
-            return false;
-        if (direct2DWrapper.Direct2DResourceCache is null)
-            return false;
-
-        _commandList?.Dispose();
-        _commandList = null;
-        var context = direct2DWrapper.Context;
-        _commandList = context.CreateCommandList();
-
-        ID2D1Image? oldTarget = null;
-
-        try
-        {
-            oldTarget = context.Target;
-            context.Target = _commandList;
-
-            context.BeginDraw();
-            context.Transform = Matrix3x2.Identity;
-
-            foreach (var element in DrawingElements)
-            {
-                // command list 里记录的是已经转换后的屏幕坐标。
-                element.Draw(direct2DWrapper.Direct2DResourceCache, direct2DWrapper.Context, _offsetX, _offsetY, _scale);
-            }
-
-            context.EndDraw();
-            _commandList.Close();
-
-            _commandListDirty = false;
-            return true;
-        }
-        catch
-        {
-            _commandList?.Dispose();
-            _commandList = null;
-            _commandListDirty = true;
-            throw;
-        }
-        finally
-        {
-            context.Target = oldTarget;
-            oldTarget?.Dispose();
-        }
-    }
-
-    private void RenderCommandList()
-    {
-        var context = direct2DWrapper.Context;
-        if (context is null)
-            return;
-
-        if (_commandListDirty || _commandList is null)
-        {
-            if (!BuildCommandList())
-                return;
-        }
-
-        direct2DWrapper.BeginDraw();
-
-        Clear();
-
-        // 注意：这里必须保持 Identity。
-        // offset / scale 已经被 DrawExtension 烘焙进 command list 了。
-        context.Transform = Matrix3x2.Identity;
-        context.DrawImage(
-            _commandList,
-            interpolationMode: InterpolationMode.Linear,
-            compositeMode: CompositeMode.SourceOver);
-
-        context.Transform = Matrix3x2.Identity;
-
-        direct2DWrapper.EndDraw();
-        direct2DWrapper.Present();
     }
 
     private static float Clamp(float value, float min, float max)
