@@ -2,13 +2,12 @@
 using System.Drawing;
 using System.Numerics;
 using System.Runtime.InteropServices;
+using Vortice.DCommon;
 using Vortice.Direct2D1;
 using Vortice.DirectWrite;
+using Vortice.DXGI;
 using Vortice.Mathematics;
-using DCommon = Vortice.DCommon;
 using DrawingColor = System.Drawing.Color;
-using DWrite = Vortice.DirectWrite;
-using DXGI = Vortice.DXGI;
 using HatchStyle = Direct2dDemo.Shared.Enums.HatchStyle;
 using SharedCapStyle = Direct2dDemo.Shared.Enums.CapStyle;
 using SharedDashStyle = Direct2dDemo.Shared.Enums.DashStyle;
@@ -24,13 +23,13 @@ internal class Direct2DResourceCache(ID2D1Factory d2D1Factory, IDWriteFactory iD
 
     #region Cache
 
-    private readonly Dictionary<DrawingColor, ID2D1SolidColorBrush> _solidColorBrushCache = new();
-    private readonly Dictionary<(string FontFamily, float FontSize), DWrite.IDWriteTextFormat> _textFormatCache = new();
-    private readonly Dictionary<PolygonGeometryElement, ID2D1PathGeometry> _polygonGeometryCache = new();
-    private readonly Dictionary<RectangleGeometryElement, ID2D1RectangleGeometry> _rectangleGeometryCache = new();
-    private readonly Dictionary<EllipseGeometryElement, ID2D1EllipseGeometry> _ellipseGeometryCache = new();
-    private readonly Dictionary<StrokeStyleProperties, ID2D1StrokeStyle> _strokeStyleCache = new();
-    private readonly Dictionary<(HatchStyle HatchStyle, DrawingColor HatchColor, DrawingColor BackgroundColor, int CellSize, int LineWidth), ID2D1BitmapBrush> _hatchBrushCache = new();
+    private readonly Dictionary<DrawingColor, ID2D1SolidColorBrush> _solidColorBrushCache = [];
+    private readonly Dictionary<(string FontFamily, float FontSize), IDWriteTextFormat> _textFormatCache = [];
+    private readonly Dictionary<PolygonGeometryElement, ID2D1PathGeometry> _polygonGeometryCache = [];
+    private readonly Dictionary<RectangleGeometryElement, ID2D1RectangleGeometry> _rectangleGeometryCache = [];
+    private readonly Dictionary<EllipseGeometryElement, ID2D1EllipseGeometry> _ellipseGeometryCache = [];
+    private readonly Dictionary<StrokeStyleProperties, ID2D1StrokeStyle> _strokeStyleCache = [];
+    private readonly Dictionary<(HatchStyle HatchStyle, DrawingColor HatchColor, DrawingColor BackgroundColor, int CellSize, int LineWidth), ID2D1BitmapBrush> _hatchBrushCache = [];
 
     public ID2D1BitmapBrush GetOrCreateHatchStyle(
         HatchStyle hatchStyle,
@@ -127,9 +126,9 @@ internal class Direct2DResourceCache(ID2D1Factory d2D1Factory, IDWriteFactory iD
 
         var bitmapProperties = new BitmapProperties1
         {
-            PixelFormat = new DCommon.PixelFormat(
-                DXGI.Format.B8G8R8A8_UNorm,
-                DCommon.AlphaMode.Premultiplied),
+            PixelFormat = new PixelFormat(
+                Format.B8G8R8A8_UNorm,
+                Vortice.DCommon.AlphaMode.Premultiplied),
             DpiX = 96.0f,
             DpiY = 96.0f,
             BitmapOptions = BitmapOptions.None
@@ -344,7 +343,7 @@ internal class Direct2DResourceCache(ID2D1Factory d2D1Factory, IDWriteFactory iD
         }
     }
 
-    public DWrite.IDWriteTextFormat GetOrCreateTextFormat(string fontFamily, float fontSize)
+    public IDWriteTextFormat GetOrCreateTextFormat(string fontFamily, float fontSize)
     {
         if (_dwriteFactory is null)
             throw new InvalidOperationException("DirectWrite factory is not created.");
@@ -364,14 +363,14 @@ internal class Direct2DResourceCache(ID2D1Factory d2D1Factory, IDWriteFactory iD
         var textFormat = _dwriteFactory.CreateTextFormat(
             fontFamily,
             null,
-            DWrite.FontWeight.Normal,
-            DWrite.FontStyle.Normal,
-            DWrite.FontStretch.Normal,
+            FontWeight.Normal,
+            FontStyle.Normal,
+            FontStretch.Normal,
             fontSize,
             "ja-JP");
 
-        textFormat.TextAlignment = DWrite.TextAlignment.Leading;
-        textFormat.ParagraphAlignment = DWrite.ParagraphAlignment.Near;
+        textFormat.TextAlignment = TextAlignment.Leading;
+        textFormat.ParagraphAlignment = ParagraphAlignment.Near;
 
         _textFormatCache[key] = textFormat;
         return textFormat;

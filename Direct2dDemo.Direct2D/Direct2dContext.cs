@@ -3,8 +3,8 @@ using Direct2dDemo.Shared.Elements;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
+using Vortice.Direct2D1;
 using Vortice.Mathematics;
-using D2D = Vortice.Direct2D1;
 
 namespace Direct2dDemo.Direct2D;
 
@@ -22,7 +22,7 @@ public class Direct2dContext : IDrawingContext, ICanvasContext
 
     private static readonly Color4 background = new Color4(1f, 1f, 1f, 1.0f);
 
-    private D2D.ID2D1CommandList? _commandList;
+    private ID2D1CommandList? _commandList;
     private bool _commandListDirty = true;
 
     private float _panStartX;
@@ -181,7 +181,7 @@ public class Direct2dContext : IDrawingContext, ICanvasContext
         var context = direct2DWrapper.Context;
         _commandList = context.CreateCommandList();
 
-        D2D.ID2D1Image? oldTarget = null;
+        ID2D1Image? oldTarget = null;
 
         try
         {
@@ -238,8 +238,8 @@ public class Direct2dContext : IDrawingContext, ICanvasContext
         context.Transform = Matrix3x2.Identity;
         context.DrawImage(
             _commandList,
-            interpolationMode: D2D.InterpolationMode.Linear,
-            compositeMode: D2D.CompositeMode.SourceOver);
+            interpolationMode: InterpolationMode.Linear,
+            compositeMode: CompositeMode.SourceOver);
 
         context.Transform = Matrix3x2.Identity;
 

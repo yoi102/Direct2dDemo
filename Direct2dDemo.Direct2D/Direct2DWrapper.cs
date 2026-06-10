@@ -1,43 +1,43 @@
 ﻿using System.Diagnostics.CodeAnalysis;
-using D2D = Vortice.Direct2D1;
-using D3D = Vortice.Direct3D;
-using D3D11 = Vortice.Direct3D11;
-using DCommon = Vortice.DCommon;
-using DWrite = Vortice.DirectWrite;
-using DXGI = Vortice.DXGI;
+using Vortice.DCommon;
+using Vortice.Direct2D1;
+using Vortice.Direct3D;
+using Vortice.Direct3D11;
+using Vortice.DirectWrite;
+using Vortice.DXGI;
 
 namespace Direct2dDemo.Direct2D;
 
 internal sealed class Direct2DWrapper : IDisposable
 {
-    private D2D.ID2D1Factory1? _d2dFactory;
-    private D2D.ID2D1Device? _d2dDevice;
-    private D2D.ID2D1DeviceContext? _d2dContext;
+    private ID2D1Factory1? _d2dFactory;
+    private ID2D1Device? _d2dDevice;
+    private ID2D1DeviceContext? _d2dContext;
 
-    private D3D11.ID3D11Device? _d3dDevice;
-    private D3D11.ID3D11DeviceContext? _d3dContext;
+    private ID3D11Device? _d3dDevice;
+    private ID3D11DeviceContext? _d3dContext;
 
-    private DXGI.IDXGIDevice? _dxgiDevice;
-    private DXGI.IDXGIFactory2? _dxgiFactory;
-    private DXGI.IDXGISwapChain1? _swapChain;
-    private DWrite.IDWriteFactory? _dwriteFactory;
+    private IDXGIDevice? _dxgiDevice;
+    private IDXGIFactory2? _dxgiFactory;
+    private IDXGISwapChain1? _swapChain;
+    private IDWriteFactory? _dwriteFactory;
 
-    private D2D.ID2D1Bitmap1? _targetBitmap;
+    private ID2D1Bitmap1? _targetBitmap;
 
     private nint _hwnd;
     private int _width;
     private int _height;
 
-    private D3D.FeatureLevel _featureLevel;
+    private Vortice.Direct3D.FeatureLevel _featureLevel;
     private bool _usingWarp;
     private bool _disposed;
     private bool _isDrawing;
 
     public int Width => _width;
     public int Height => _height;
-    public DWrite.IDWriteFactory? DwriteFactory => _dwriteFactory;
+    public IDWriteFactory? DwriteFactory => _dwriteFactory;
 
-    public D2D.ID2D1DeviceContext? Context
+    public ID2D1DeviceContext? Context
     {
         get
         {
@@ -48,7 +48,7 @@ internal sealed class Direct2DWrapper : IDisposable
 
     public Direct2DResourceCache? Direct2DResourceCache { get; private set; }
     public bool UsingWarp => _usingWarp;
-    public D3D.FeatureLevel FeatureLevel => _featureLevel;
+    public Vortice.Direct3D.FeatureLevel FeatureLevel => _featureLevel;
     public bool IsTargetReady => _swapChain != null && _targetBitmap != null;
 
     public Direct2DWrapper()
@@ -102,7 +102,7 @@ internal sealed class Direct2DWrapper : IDisposable
         _d2dContext.Target = _targetBitmap;
     }
 
-    public D2D.ID2D1Bitmap1? CreateBitmap()
+    public ID2D1Bitmap1? CreateBitmap()
     {
         ThrowIfDisposed();
 
@@ -112,12 +112,12 @@ internal sealed class Direct2DWrapper : IDisposable
         var pixelSize = _targetBitmap.PixelSize;
         _targetBitmap.GetDpi(out var dpiX, out var dpiY);
 
-        var bitmapProperties = new D2D.BitmapProperties1
+        var bitmapProperties = new BitmapProperties1
         {
             PixelFormat = _targetBitmap.PixelFormat,
             DpiX = dpiX,
             DpiY = dpiY,
-            BitmapOptions = D2D.BitmapOptions.Target
+            BitmapOptions = BitmapOptions.Target
         };
 
         return _d2dContext.CreateBitmap(
@@ -157,8 +157,8 @@ internal sealed class Direct2DWrapper : IDisposable
             0,
             (uint)_width,
             (uint)_height,
-            DXGI.Format.Unknown,
-            DXGI.SwapChainFlags.None
+            Format.Unknown,
+            SwapChainFlags.None
         ).CheckError();
 
         CreateRenderTargetBitmap();
@@ -202,10 +202,10 @@ internal sealed class Direct2DWrapper : IDisposable
         ThrowIfDisposed();
         EnsureTargetReady();
 
-        _swapChain.Present(1, DXGI.PresentFlags.None).CheckError();
+        _swapChain.Present(1, PresentFlags.None).CheckError();
     }
 
-    public void DrawFrame(Action<D2D.ID2D1DeviceContext> drawAction)
+    public void DrawFrame(Action<ID2D1DeviceContext> drawAction)
     {
         if (drawAction == null)
             throw new ArgumentNullException(nameof(drawAction));
@@ -231,15 +231,15 @@ internal sealed class Direct2DWrapper : IDisposable
     [MemberNotNull(nameof(_d2dFactory))]
     private void CreateD2DFactory()
     {
-        _d2dFactory = D2D.D2D1.D2D1CreateFactory<D2D.ID2D1Factory1>(D2D.FactoryType.SingleThreaded);
+        _d2dFactory = D2D1.D2D1CreateFactory<ID2D1Factory1>(Vortice.Direct2D1.FactoryType.MultiThreaded);
     }
 
-    private DWrite.IDWriteFactory GetDWriteFactory()
+    private IDWriteFactory GetDWriteFactory()
     {
         if (_dwriteFactory != null)
             return _dwriteFactory;
 
-        _dwriteFactory = DWrite.DWrite.DWriteCreateFactory<DWrite.IDWriteFactory>();
+        _dwriteFactory = DWrite.DWriteCreateFactory<IDWriteFactory>();
         return _dwriteFactory;
     }
 
@@ -247,50 +247,37 @@ internal sealed class Direct2DWrapper : IDisposable
     {
         var featureLevelsWith11_1 = new[]
         {
-            D3D.FeatureLevel.Level_11_1,
-            D3D.FeatureLevel.Level_11_0,
-            D3D.FeatureLevel.Level_10_1,
-            D3D.FeatureLevel.Level_10_0,
-            D3D.FeatureLevel.Level_9_3,
-            D3D.FeatureLevel.Level_9_2,
-            D3D.FeatureLevel.Level_9_1
+            Vortice.Direct3D.FeatureLevel.Level_11_1,
+            Vortice.Direct3D.FeatureLevel.Level_11_0,
+            Vortice.Direct3D.FeatureLevel.Level_10_1,
+            Vortice.Direct3D.FeatureLevel.Level_10_0,
+            Vortice.Direct3D.FeatureLevel.Level_9_3,
+            Vortice.Direct3D.FeatureLevel.Level_9_2,
+            Vortice.Direct3D.FeatureLevel.Level_9_1
         };
 
-        var featureLevelsWithout11_1 = new[]
-        {
-            D3D.FeatureLevel.Level_11_0,
-            D3D.FeatureLevel.Level_10_1,
-            D3D.FeatureLevel.Level_10_0,
-            D3D.FeatureLevel.Level_9_3,
-            D3D.FeatureLevel.Level_9_2,
-            D3D.FeatureLevel.Level_9_1
-        };
-
-        if (TryCreateD3DDevice(D3D.DriverType.Hardware, featureLevelsWith11_1, false))
+        if (TryCreateD3DDevice(DriverType.Hardware, featureLevelsWith11_1, false))
             return;
 
-        if (TryCreateD3DDevice(D3D.DriverType.Hardware, featureLevelsWithout11_1, false))
-            return;
-
-        if (TryCreateD3DDevice(D3D.DriverType.Warp, featureLevelsWithout11_1, true))
+        if (TryCreateD3DDevice(DriverType.Warp, featureLevelsWith11_1, true))
             return;
 
         throw new InvalidOperationException("Failed to create D3D11 device.");
     }
 
     private bool TryCreateD3DDevice(
-        D3D.DriverType driverType,
-        D3D.FeatureLevel[] featureLevels,
+        DriverType driverType,
+        Vortice.Direct3D.FeatureLevel[] featureLevels,
         bool usingWarp)
     {
-        D3D11.ID3D11Device? d3dDevice = null;
-        D3D11.ID3D11DeviceContext? d3dContext = null;
+        ID3D11Device? d3dDevice = null;
+        ID3D11DeviceContext? d3dContext = null;
 
         try
         {
-            var flags = D3D11.DeviceCreationFlags.BgraSupport;
+            var flags = DeviceCreationFlags.BgraSupport;
 
-            var result = D3D11.D3D11.D3D11CreateDevice(
+            var result = D3D11.D3D11CreateDevice(
                 IntPtr.Zero,
                 driverType,
                 flags,
@@ -305,7 +292,7 @@ internal sealed class Direct2DWrapper : IDisposable
             _d3dDevice = d3dDevice;
             _d3dContext = d3dContext;
             _usingWarp = usingWarp;
-            _dxgiDevice = _d3dDevice.QueryInterface<DXGI.IDXGIDevice>();
+            _dxgiDevice = _d3dDevice.QueryInterface<IDXGIDevice>();
             return true;
         }
         catch
@@ -335,7 +322,7 @@ internal sealed class Direct2DWrapper : IDisposable
         if (_d2dDevice is null)
             throw new InvalidOperationException("Failed to create Direct2D device.");
 
-        _d2dContext = _d2dDevice.CreateDeviceContext();
+        _d2dContext = _d2dDevice.CreateDeviceContext(DeviceContextOptions.EnableMultithreadedOptimizations);
         if (_d2dContext is null)
             throw new InvalidOperationException("Failed to create Direct2D device context.");
     }
@@ -345,28 +332,28 @@ internal sealed class Direct2DWrapper : IDisposable
         if (_dxgiDevice is null)
             throw new InvalidOperationException("DXGI device is not created.");
 
-        DXGI.IDXGIAdapter? adapter = null;
+        IDXGIAdapter? adapter = null;
 
         try
         {
             adapter = _dxgiDevice.GetAdapter();
-            _dxgiFactory = adapter.GetParent<DXGI.IDXGIFactory2>();
+            _dxgiFactory = adapter.GetParent<IDXGIFactory2>();
             if (_dxgiFactory is null)
                 throw new InvalidOperationException("Failed to create DXGI factory.");
 
-            var desc = new DXGI.SwapChainDescription1
+            var desc = new SwapChainDescription1
             {
                 Width = (uint)_width,
                 Height = (uint)_height,
-                Format = DXGI.Format.B8G8R8A8_UNorm,
+                Format = Format.B8G8R8A8_UNorm,
                 Stereo = false,
-                SampleDescription = new DXGI.SampleDescription(1, 0),
-                BufferUsage = DXGI.Usage.RenderTargetOutput,
+                SampleDescription = new SampleDescription(1, 0),
+                BufferUsage = Usage.RenderTargetOutput,
                 BufferCount = 2,
-                Scaling = DXGI.Scaling.Stretch,
-                SwapEffect = DXGI.SwapEffect.FlipSequential,
-                AlphaMode = DXGI.AlphaMode.Ignore,
-                Flags = DXGI.SwapChainFlags.None
+                Scaling = Scaling.Stretch,
+                SwapEffect = SwapEffect.FlipSequential,
+                AlphaMode = Vortice.DXGI.AlphaMode.Ignore,
+                Flags = SwapChainFlags.None
             };
 
             if (_d3dDevice is null)
@@ -380,7 +367,7 @@ internal sealed class Direct2DWrapper : IDisposable
                 null);
 
             // Prevent DXGI from handling Alt+Enter automatically.
-            _dxgiFactory.MakeWindowAssociation(_hwnd, DXGI.WindowAssociationFlags.IgnoreAltEnter);
+            _dxgiFactory.MakeWindowAssociation(_hwnd, WindowAssociationFlags.IgnoreAltEnter);
         }
         finally
         {
@@ -395,20 +382,20 @@ internal sealed class Direct2DWrapper : IDisposable
         if (_swapChain is null)
             throw new InvalidOperationException("Swap chain is not created.");
 
-        DXGI.IDXGISurface? backBuffer = null;
+        IDXGISurface? backBuffer = null;
 
         try
         {
-            backBuffer = _swapChain.GetBuffer<DXGI.IDXGISurface>(0);
+            backBuffer = _swapChain.GetBuffer<IDXGISurface>(0);
 
-            var bitmapProperties = new D2D.BitmapProperties1
+            var bitmapProperties = new BitmapProperties1
             {
-                PixelFormat = new DCommon.PixelFormat(
-                    DXGI.Format.B8G8R8A8_UNorm,
-                    DCommon.AlphaMode.Ignore),
+                PixelFormat = new PixelFormat(
+                    Format.B8G8R8A8_UNorm,
+                    Vortice.DCommon.AlphaMode.Ignore),
                 DpiX = 96.0f,
                 DpiY = 96.0f,
-                BitmapOptions = D2D.BitmapOptions.Target | D2D.BitmapOptions.CannotDraw
+                BitmapOptions = BitmapOptions.Target | BitmapOptions.CannotDraw
             };
 
             _targetBitmap = _d2dContext.CreateBitmapFromDxgiSurface(
