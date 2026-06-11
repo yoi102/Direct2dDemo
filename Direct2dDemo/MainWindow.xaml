@@ -136,7 +136,7 @@
                                    HorizontalAlignment="Left" />
                         <TextBlock Grid.Column="1"
                                    VerticalAlignment="Center"
-                                   Text="{Binding LineCount}" />
+                                   Text="{Binding LineCount,StringFormat={}{0:N0}}" />
                     </Grid>
                     <Grid Margin="20 5 5 5"
                           ColumnDefinitions="4*,2*">
@@ -145,7 +145,7 @@
                                    HorizontalAlignment="Left" />
                         <TextBlock Grid.Column="1"
                                    VerticalAlignment="Center"
-                                   Text="{Binding RectangleCount}" />
+                                   Text="{Binding RectangleCount,StringFormat={}{0:N0}}" />
                     </Grid>
                     <Grid Margin="20 5 5 5"
                           ColumnDefinitions="4*,2*">
@@ -154,7 +154,7 @@
                                    HorizontalAlignment="Left" />
                         <TextBlock Grid.Column="1"
                                    VerticalAlignment="Center"
-                                   Text="{Binding RectangleGeometryCount}" />
+                                   Text="{Binding RectangleGeometryCount,StringFormat={}{0:N0}}" />
                     </Grid>
                     <Grid Margin="20 5 5 5"
                           ColumnDefinitions="4*,2*">
@@ -163,7 +163,7 @@
                                    HorizontalAlignment="Left" />
                         <TextBlock Grid.Column="1"
                                    VerticalAlignment="Center"
-                                   Text="{Binding EllipseCount}" />
+                                   Text="{Binding EllipseCount,StringFormat={}{0:N0}}" />
                     </Grid>
                     <Grid Margin="20 5 5 5"
                           ColumnDefinitions="4*,2*">
@@ -172,7 +172,7 @@
                                    HorizontalAlignment="Left" />
                         <TextBlock Grid.Column="1"
                                    VerticalAlignment="Center"
-                                   Text="{Binding EllipseGeometryCount}" />
+                                   Text="{Binding EllipseGeometryCount,StringFormat={}{0:N0}}" />
                     </Grid>
                     <Grid Margin="20 5 5 5"
                           ColumnDefinitions="4*,2*">
@@ -181,7 +181,7 @@
                                    HorizontalAlignment="Left" />
                         <TextBlock Grid.Column="1"
                                    VerticalAlignment="Center"
-                                   Text="{Binding PolygonCount}" />
+                                   Text="{Binding PolygonCount,StringFormat={}{0:N0}}" />
                     </Grid>
                     <Grid Margin="20 5 5 5"
                           ColumnDefinitions="4*,2*">
@@ -190,7 +190,7 @@
                                    HorizontalAlignment="Left" />
                         <TextBlock Grid.Column="1"
                                    VerticalAlignment="Center"
-                                   Text="{Binding TextCount}" />
+                                   Text="{Binding TextCount,StringFormat={}{0:N0}}" />
                     </Grid>
                 </StackPanel>
             </StackPanel>
