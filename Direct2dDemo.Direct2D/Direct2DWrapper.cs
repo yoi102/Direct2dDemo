@@ -14,6 +14,7 @@ internal sealed class Direct2DWrapper : IDisposable
     private ID2D1Device? _d2dDevice;
     private ID2D1DeviceContext? _d2dContext;
 
+    public ID3D11Device? D3DDevice => _d3dDevice;
     private ID3D11Device? _d3dDevice;
     private ID3D11DeviceContext? _d3dContext;
 
@@ -46,7 +47,15 @@ internal sealed class Direct2DWrapper : IDisposable
         }
     }
 
-    // 暴露 Device 给外界，用于多线程安全地创建独立的子 Context
+    public ID2D1Factory1? Factory
+    {
+        get
+        {
+            ThrowIfDisposed();
+            return _d2dFactory;
+        }
+    }
+
     public ID2D1Device? Device
     {
         get
