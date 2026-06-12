@@ -385,7 +385,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         Running = true;
         using var _ = DeferAction.Create(() => Running = false);
 
-        await Task.Delay(3000); // 模拟一些额外的处理时间，方便观察 UI 反应
+        await Task.Delay(500); // 模拟一些额外的处理时间，方便观察 UI 反应
         Direct2dContext.Render();
     }
 
@@ -395,7 +395,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         Running = true;
         using var _ = DeferAction.Create(() => Running = false);
 
-        await Task.Delay(3000); // 模拟一些额外的处理时间，方便观察 UI 反应
+        await Task.Delay(500); // 模拟一些额外的处理时间，方便观察 UI 反应
         Direct2dContext.Render();
 
         GdiContext.Render();
