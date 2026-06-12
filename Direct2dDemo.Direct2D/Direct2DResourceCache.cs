@@ -1,4 +1,5 @@
-﻿using Direct2dDemo.Shared.Elements.GeometryElements;
+﻿using System.Collections.Concurrent;
+using Direct2dDemo.Shared.Elements.GeometryElements;
 using System.Drawing;
 using System.Numerics;
 using System.Runtime.InteropServices;
@@ -21,15 +22,14 @@ internal class Direct2DResourceCache(ID2D1Factory d2D1Factory, IDWriteFactory iD
     private readonly IDWriteFactory _dwriteFactory = iDWriteFactory;
     private readonly ID2D1DeviceContext _d2dContext = d2dContext;
 
-    #region Cache
 
-    private readonly Dictionary<DrawingColor, ID2D1SolidColorBrush> _solidColorBrushCache = [];
-    private readonly Dictionary<(string FontFamily, float FontSize), IDWriteTextFormat> _textFormatCache = [];
-    private readonly Dictionary<PolygonGeometryElement, ID2D1PathGeometry> _polygonGeometryCache = [];
-    private readonly Dictionary<RectangleGeometryElement, ID2D1RectangleGeometry> _rectangleGeometryCache = [];
-    private readonly Dictionary<EllipseGeometryElement, ID2D1EllipseGeometry> _ellipseGeometryCache = [];
-    private readonly Dictionary<StrokeStyleProperties, ID2D1StrokeStyle> _strokeStyleCache = [];
-    private readonly Dictionary<(HatchStyle HatchStyle, DrawingColor HatchColor, DrawingColor BackgroundColor, int CellSize, int LineWidth), ID2D1BitmapBrush> _hatchBrushCache = [];
+    private readonly ConcurrentDictionary<DrawingColor, Lazy<ID2D1SolidColorBrush>> _solidColorBrushCache = new();
+    private readonly ConcurrentDictionary<(string FontFamily, float FontSize), Lazy<IDWriteTextFormat>> _textFormatCache = new();
+    private readonly ConcurrentDictionary<PolygonGeometryElement, Lazy<ID2D1PathGeometry>> _polygonGeometryCache = new();
+    private readonly ConcurrentDictionary<RectangleGeometryElement, Lazy<ID2D1RectangleGeometry>> _rectangleGeometryCache = new();
+    private readonly ConcurrentDictionary<EllipseGeometryElement, Lazy<ID2D1EllipseGeometry>> _ellipseGeometryCache = new();
+    private readonly ConcurrentDictionary<StrokeStyleProperties, Lazy<ID2D1StrokeStyle>> _strokeStyleCache = new();
+    private readonly ConcurrentDictionary<(HatchStyle HatchStyle, DrawingColor HatchColor, DrawingColor BackgroundColor, int CellSize, int LineWidth), Lazy<ID2D1BitmapBrush>> _hatchBrushCache = new();
 
     public ID2D1BitmapBrush GetOrCreateHatchStyle(
         HatchStyle hatchStyle,
@@ -49,50 +49,31 @@ internal class Direct2DResourceCache(ID2D1Factory d2D1Factory, IDWriteFactory iD
 
         var key = (hatchStyle, hatchColor, backgroundColor, cellSize, lineWidth);
 
-        if (_hatchBrushCache.TryGetValue(key, out var cached))
-            return cached;
-
-        var bitmap = CreateHatchBitmap(
-            hatchStyle,
-            hatchColor,
-            backgroundColor,
-            cellSize,
-            lineWidth);
-
-        ID2D1BitmapBrush? brush = null;
-
-        try
+        return _hatchBrushCache.GetOrAdd(key, k => new Lazy<ID2D1BitmapBrush>(() =>
         {
-            var bitmapBrushProperties = new BitmapBrushProperties
+            var bitmap = CreateHatchBitmap(k.HatchStyle, k.HatchColor, k.BackgroundColor, k.CellSize, k.LineWidth);
+            try
             {
-                ExtendModeX = ExtendMode.Wrap,
-                ExtendModeY = ExtendMode.Wrap,
-                InterpolationMode = BitmapInterpolationMode.NearestNeighbor
-            };
+                var bitmapBrushProperties = new BitmapBrushProperties
+                {
+                    ExtendModeX = ExtendMode.Wrap,
+                    ExtendModeY = ExtendMode.Wrap,
+                    InterpolationMode = BitmapInterpolationMode.NearestNeighbor
+                };
 
-            var brushProperties = new BrushProperties
+                var brushProperties = new BrushProperties
+                {
+                    Opacity = 1.0f,
+                    Transform = Matrix3x2.Identity
+                };
+
+                return _d2dContext.CreateBitmapBrush(bitmap, bitmapBrushProperties, brushProperties);
+            }
+            finally
             {
-                Opacity = 1.0f,
-                Transform = Matrix3x2.Identity
-            };
-
-            brush = _d2dContext.CreateBitmapBrush(
-                bitmap,
-                bitmapBrushProperties,
-                brushProperties);
-
-            _hatchBrushCache[key] = brush;
-            return brush;
-        }
-        catch
-        {
-            brush?.Dispose();
-            throw;
-        }
-        finally
-        {
-            bitmap?.Dispose();
-        }
+                bitmap?.Dispose();
+            }
+        })).Value;
     }
 
     private ID2D1Bitmap CreateHatchBitmap(
@@ -179,26 +160,12 @@ internal class Direct2DResourceCache(ID2D1Factory d2D1Factory, IDWriteFactory iD
     {
         return hatchStyle switch
         {
-            HatchStyle.Horizontal =>
-                y < lineWidth,
-
-            HatchStyle.Vertical =>
-                x < lineWidth,
-
-            HatchStyle.Cross =>
-                y < lineWidth ||
-                x < lineWidth,
-
-            HatchStyle.ForwardDiagonal =>
-                Math.Abs(x - y) < lineWidth,
-
-            HatchStyle.BackwardDiagonal =>
-                Math.Abs(x + y - (cellSize - 1)) < lineWidth,
-
-            HatchStyle.DiagCross =>
-                Math.Abs(x - y) < lineWidth ||
-                Math.Abs(x + y - (cellSize - 1)) < lineWidth,
-
+            HatchStyle.Horizontal => y < lineWidth,
+            HatchStyle.Vertical => x < lineWidth,
+            HatchStyle.Cross => y < lineWidth || x < lineWidth,
+            HatchStyle.ForwardDiagonal => Math.Abs(x - y) < lineWidth,
+            HatchStyle.BackwardDiagonal => Math.Abs(x + y - (cellSize - 1)) < lineWidth,
+            HatchStyle.DiagCross => Math.Abs(x - y) < lineWidth || Math.Abs(x + y - (cellSize - 1)) < lineWidth,
             _ => throw new ArgumentOutOfRangeException(nameof(hatchStyle))
         };
     }
@@ -222,125 +189,62 @@ internal class Direct2DResourceCache(ID2D1Factory d2D1Factory, IDWriteFactory iD
             DashOffset = 0.0f
         };
 
-        if (_strokeStyleCache.TryGetValue(props, out var cached))
-            return cached;
-
-        var strokeStyle = _d2dFactory.CreateStrokeStyle(props);
-        _strokeStyleCache[props] = strokeStyle;
-        return strokeStyle;
+        return _strokeStyleCache.GetOrAdd(props, p => new Lazy<ID2D1StrokeStyle>(() =>
+            _d2dFactory.CreateStrokeStyle(p)
+        )).Value;
     }
 
     public ID2D1EllipseGeometry GetOrCreateEllipseGeometryElement(EllipseGeometryElement element)
     {
-        if (_ellipseGeometryCache.TryGetValue(element, out var cached))
-            return cached;
-
-        if (_d2dFactory is null)
-            throw new InvalidOperationException("Direct2D factory is not created.");
-
-        if (element.RadiusX <= 0)
-            throw new ArgumentOutOfRangeException(nameof(element.RadiusX));
-
-        if (element.RadiusY <= 0)
-            throw new ArgumentOutOfRangeException(nameof(element.RadiusY));
-
-        ID2D1EllipseGeometry? geometry = null;
-
-        try
+        return _ellipseGeometryCache.GetOrAdd(element, el => new Lazy<ID2D1EllipseGeometry>(() =>
         {
-            var ellipse = new Ellipse(
-                new Vector2(element.Center.X, element.Center.Y),
-                element.RadiusX,
-                element.RadiusY);
+            if (_d2dFactory is null)
+                throw new InvalidOperationException("Direct2D factory is not created.");
 
-            geometry = _d2dFactory.CreateEllipseGeometry(ellipse);
-            _ellipseGeometryCache[element] = geometry;
-            return geometry;
-        }
-        catch
-        {
-            geometry?.Dispose();
-            throw;
-        }
+            if (el.RadiusX <= 0 || el.RadiusY <= 0)
+                throw new ArgumentOutOfRangeException("Radius must be greater than zero.");
+
+            var ellipse = new Ellipse(new Vector2(el.Center.X, el.Center.Y), el.RadiusX, el.RadiusY);
+            return _d2dFactory.CreateEllipseGeometry(ellipse);
+        })).Value;
     }
 
     public ID2D1RectangleGeometry GetOrCreateRectangleGeometry(RectangleGeometryElement element)
     {
-        if (_rectangleGeometryCache.TryGetValue(element, out var cached))
-            return cached;
-
-        if (_d2dFactory is null)
-            throw new InvalidOperationException("Direct2D factory is not created.");
-
-        if (element.Width <= 0)
-            throw new ArgumentOutOfRangeException(nameof(element.Width));
-
-        if (element.Height <= 0)
-            throw new ArgumentOutOfRangeException(nameof(element.Height));
-
-        ID2D1RectangleGeometry? geometry = null;
-
-        try
+        return _rectangleGeometryCache.GetOrAdd(element, el => new Lazy<ID2D1RectangleGeometry>(() =>
         {
-            var rectangle = new RectangleF(
-                element.TopLeft.X,
-                element.TopLeft.Y,
-                element.Width,
-                element.Height);
+            if (_d2dFactory is null)
+                throw new InvalidOperationException("Direct2D factory is not created.");
 
-            geometry = _d2dFactory.CreateRectangleGeometry(rectangle);
-            _rectangleGeometryCache[element] = geometry;
-            return geometry;
-        }
-        catch
-        {
-            geometry?.Dispose();
-            throw;
-        }
+            if (el.Width <= 0 || el.Height <= 0)
+                throw new ArgumentOutOfRangeException("Size must be greater than zero.");
+
+            var rectangle = new RectangleF(el.TopLeft.X, el.TopLeft.Y, el.Width, el.Height);
+            return _d2dFactory.CreateRectangleGeometry(rectangle);
+        })).Value;
     }
 
     public ID2D1PathGeometry GetOrCreatePolygonGeometry(PolygonGeometryElement element)
     {
-        // not good to use PolygonElement as key directly, but for demo purpose it's fine.
-        if (_polygonGeometryCache.TryGetValue(element, out var cached))
-            return cached;
-
-        if (_d2dFactory is null)
-            throw new InvalidOperationException("Direct2D factory is not created.");
-
-        var geometry = _d2dFactory.CreatePathGeometry();
-        ID2D1GeometrySink? sink = null;
-
-        try
+        return _polygonGeometryCache.GetOrAdd(element, el => new Lazy<ID2D1PathGeometry>(() =>
         {
-            sink = geometry.Open();
+            if (_d2dFactory is null)
+                throw new InvalidOperationException("Direct2D factory is not created.");
 
+            var geometry = _d2dFactory.CreatePathGeometry();
+            using var sink = geometry.Open();
             sink.SetFillMode(FillMode.Winding);
+            sink.BeginFigure(el.Points[0].ToVector2(), FigureBegin.Filled);
 
-            sink.BeginFigure(
-                element.Points[0].ToVector2(),
-                FigureBegin.Filled);
-
-            for (var i = 1; i < element.Points.Count; i++)
+            for (var i = 1; i < el.Points.Count; i++)
             {
-                sink.AddLine(element.Points[i].ToVector2());
+                sink.AddLine(el.Points[i].ToVector2());
             }
 
             sink.EndFigure(FigureEnd.Closed);
             sink.Close();
-
-            _polygonGeometryCache[element] = geometry;
             return geometry;
-        }
-        catch
-        {
-            geometry?.Dispose();
-            throw;
-        }
-        finally
-        {
-            sink?.Dispose();
-        }
+        })).Value;
     }
 
     public IDWriteTextFormat GetOrCreateTextFormat(string fontFamily, float fontSize)
@@ -351,52 +255,44 @@ internal class Direct2DResourceCache(ID2D1Factory d2D1Factory, IDWriteFactory iD
         if (fontSize <= 0)
             throw new ArgumentOutOfRangeException(nameof(fontSize));
 
-        fontFamily = string.IsNullOrWhiteSpace(fontFamily)
-            ? "Meiryo"
-            : fontFamily.Trim();
-
+        fontFamily = string.IsNullOrWhiteSpace(fontFamily) ? "Meiryo" : fontFamily.Trim();
         var key = (fontFamily, fontSize);
 
-        if (_textFormatCache.TryGetValue(key, out var cached))
-            return cached;
+        return _textFormatCache.GetOrAdd(key, k => new Lazy<IDWriteTextFormat>(() =>
+        {
+            var textFormat = _dwriteFactory.CreateTextFormat(
+                k.FontFamily,
+                null,
+                FontWeight.Normal,
+                FontStyle.Normal,
+                FontStretch.Normal,
+                k.FontSize,
+                "ja-JP");
 
-        var textFormat = _dwriteFactory.CreateTextFormat(
-            fontFamily,
-            null,
-            FontWeight.Normal,
-            FontStyle.Normal,
-            FontStretch.Normal,
-            fontSize,
-            "ja-JP");
-
-        textFormat.TextAlignment = TextAlignment.Leading;
-        textFormat.ParagraphAlignment = ParagraphAlignment.Near;
-
-        _textFormatCache[key] = textFormat;
-        return textFormat;
+            textFormat.TextAlignment = TextAlignment.Leading;
+            textFormat.ParagraphAlignment = ParagraphAlignment.Near;
+            return textFormat;
+        })).Value;
     }
 
     public ID2D1SolidColorBrush GetOrCreateSolidColorBrush(DrawingColor color)
     {
-        if (_solidColorBrushCache.TryGetValue(color, out var cache))
-            return cache;
+        return _solidColorBrushCache.GetOrAdd(color, c => new Lazy<ID2D1SolidColorBrush>(() =>
+        {
+            var context = _d2dContext;
+            if (context is null)
+                throw new InvalidOperationException("Direct2D device context is not created.");
 
-        var context = _d2dContext;
-        if (context is null)
-            throw new InvalidOperationException("Direct2D device context is not created.");
+            var newBrush = context.CreateSolidColorBrush(ToD2DColor(c));
+            if (newBrush is null)
+                throw new InvalidOperationException("Failed to create solid color brush.");
 
-        var newBrush = context.CreateSolidColorBrush(ToD2DColor(color));
-        if (newBrush is null)
-            throw new InvalidOperationException("Failed to create solid color brush.");
-
-        _solidColorBrushCache[color] = newBrush;
-        return newBrush;
+            return newBrush;
+        })).Value;
     }
-    public ID2D1TransformedGeometry CreateTransformedGeometry(
-        ID2D1Geometry sourceGeometry,
-        Matrix3x2 transform)
-    {
 
+    public ID2D1TransformedGeometry CreateTransformedGeometry(ID2D1Geometry sourceGeometry, Matrix3x2 transform)
+    {
         if (sourceGeometry is null)
             throw new ArgumentNullException(nameof(sourceGeometry));
 
@@ -417,50 +313,24 @@ internal class Direct2DResourceCache(ID2D1Factory d2D1Factory, IDWriteFactory iD
 
     public void ClearCache()
     {
-        foreach (var item in _solidColorBrushCache.Values)
-        {
-            item?.Dispose();
-        }
-        _solidColorBrushCache.Clear();
-
-        foreach (var item in _textFormatCache.Values)
-        {
-            item?.Dispose();
-        }
-        _textFormatCache.Clear();
-
-        foreach (var item in _polygonGeometryCache.Values)
-        {
-            item?.Dispose();
-        }
-        _polygonGeometryCache.Clear();
-
-        foreach (var item in _rectangleGeometryCache.Values)
-        {
-            item?.Dispose();
-        }
-        _rectangleGeometryCache.Clear();
-
-        foreach (var item in _ellipseGeometryCache.Values)
-        {
-            item?.Dispose();
-        }
-        _ellipseGeometryCache.Clear();
-
-        foreach (var item in _strokeStyleCache.Values)
-        {
-            item?.Dispose();
-        }
-        _strokeStyleCache.Clear();
-
-        foreach (var item in _hatchBrushCache.Values)
-        {
-            item?.Dispose();
-        }
-        _hatchBrushCache.Clear();
+        ClearLazyCache(_solidColorBrushCache);
+        ClearLazyCache(_textFormatCache);
+        ClearLazyCache(_polygonGeometryCache);
+        ClearLazyCache(_rectangleGeometryCache);
+        ClearLazyCache(_ellipseGeometryCache);
+        ClearLazyCache(_strokeStyleCache);
+        ClearLazyCache(_hatchBrushCache);
     }
 
-    #endregion Cache
-
-
+    private static void ClearLazyCache<TKey, TValue>(ConcurrentDictionary<TKey, Lazy<TValue>> cache) where TValue : IDisposable
+    {
+        foreach (var item in cache.Values)
+        {
+            if (item.IsValueCreated)
+            {
+                item.Value?.Dispose();
+            }
+        }
+        cache.Clear();
+    }
 }

@@ -32,6 +32,8 @@
                                  VerticalAlignment="Center"
                                  Text="{Binding CountToAdd}" />
                     </Grid>
+                    <CheckBox Content="D2D_EnableMultiThread"
+                              IsChecked="{Binding Direct2DEnableMultiThread}"/>
 
                     <GroupBox>
                         <GroupBox.Header>

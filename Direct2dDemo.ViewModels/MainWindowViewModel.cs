@@ -82,6 +82,18 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     public partial bool Running { get; set; } = false;
+    private bool _Direct2DEnableMultiThread;
+    public bool Direct2DEnableMultiThread
+    {
+        get { return _Direct2DEnableMultiThread; }
+        set
+        {
+            if (SetProperty(ref _Direct2DEnableMultiThread, value))
+            {
+                Direct2dContext.EnableMultiThread = value;
+            }
+        }
+    }
 
     [ObservableProperty]
     public partial int CountToAdd { get; set; } = 1000;

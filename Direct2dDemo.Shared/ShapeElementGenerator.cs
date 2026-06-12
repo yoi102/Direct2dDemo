@@ -454,7 +454,7 @@ public class ShapeElementGenerator
 
     private static CapStyle RandomCapStyle()
     {
-        //return CapStyle.Flat;
+        //return CapStyle.Round;
 
         return NextInt(0, 3) switch
         {

@@ -3,6 +3,7 @@ using Direct2dDemo.Shared.Elements;
 using System.Diagnostics;
 using System.Numerics;
 using Vortice.Mathematics;
+using Vortice.Direct2D1;
 
 namespace Direct2dDemo.Direct2D;
 
@@ -32,6 +33,11 @@ public class Direct2dContext : IDrawingContext, ICanvasContext
     private const float MinScale = 0.05f;
     private const float MaxScale = 100.0f;
 
+    // 【新增】高性能常驻工作线程设备上下文池
+    private ID2D1DeviceContext[]? _threadContextPool;
+    private int _pooledThreadCount = 0;
+
+    public bool EnableMultiThread { get; set; } = false;
     public void Render()
     {
         RenderCurrentView();
@@ -50,27 +56,120 @@ public class Direct2dContext : IDrawingContext, ICanvasContext
         Rendered?.Invoke(this, stopwatch.ElapsedMilliseconds);
     }
 
+    // 核心改造：保证零每帧非托管对象分配的渲染指令并收集
     private void InternalRender()
     {
-        if (direct2DWrapper.Context is null)
-            return;
-        if (direct2DWrapper.Direct2DResourceCache is null)
+        if (direct2DWrapper.Context is null || direct2DWrapper.Device is null || direct2DWrapper.Direct2DResourceCache is null)
             return;
 
-        var context = direct2DWrapper.Context;
+        var mainContext = direct2DWrapper.Context;
 
-        context.BeginDraw();
-
+        mainContext.BeginDraw();
         this.Clear();
-        foreach (var element in DrawingElements)
+
+        int elementCount = DrawingElements.Count;
+
+        // 【弹性自适应】如果图元太少，多线程调度开销(Threading Context Switch)大于收益，强制走最纯粹的单线程
+        if (elementCount < 1000 || !EnableMultiThread)
         {
-            // command list 里记录的是已经转换后的屏幕坐标。
-            element.Draw(direct2DWrapper.Direct2DResourceCache, direct2DWrapper.Context, _offsetX, _offsetY, _scale);
+            for (int i = 0; i < elementCount; i++)
+            {
+                DrawingElements[i].Draw(direct2DWrapper.Direct2DResourceCache, mainContext, _offsetX, _offsetY, _scale);
+            }
+        }
+        else
+        {
+            // 确保线程池已被安全创建
+            EnsureThreadContextPool();
+
+            if (_threadContextPool == null || _pooledThreadCount == 0)
+            {
+                // 如果异常退回到单线程兜底
+                for (int i = 0; i < elementCount; i++)
+                {
+                    DrawingElements[i].Draw(direct2DWrapper.Direct2DResourceCache, mainContext, _offsetX, _offsetY, _scale);
+                }
+            }
+            else
+            {
+                int threadCount = _pooledThreadCount;
+                int chunkSize = (int)Math.Ceiling((double)elementCount / threadCount);
+                var commandLists = new ID2D1CommandList[threadCount];
+
+                // 并行指令录制区
+                Parallel.For(0, threadCount, i =>
+                {
+                    int startIndex = i * chunkSize;
+                    if (startIndex >= elementCount) return;
+                    int endIndex = Math.Min(startIndex + chunkSize, elementCount);
+
+                    // 核心提升点：直接使用长驻池子中的工作 Context，不申请新的显卡驱动链路
+                    var threadContext = _threadContextPool[i];
+
+                    // 创建轻量级内存录制流
+                    var commandList = threadContext.CreateCommandList();
+
+                    threadContext.Target = commandList;
+                    threadContext.BeginDraw();
+
+                    // 顺序遍历下标，规避多线程迭代器堆内存分配
+                    for (int j = startIndex; j < endIndex; j++)
+                    {
+                        DrawingElements[j].Draw(direct2DWrapper.Direct2DResourceCache, threadContext, _offsetX, _offsetY, _scale);
+                    }
+
+                    threadContext.EndDraw();
+                    commandList.Close(); // 必须关闭，否则主线程无法消费
+
+                    commandLists[i] = commandList;
+                });
+
+                // 主线程按 Z-index 串行汇总并呈现
+                for (int i = 0; i < threadCount; i++)
+                {
+                    if (commandLists[i] != null)
+                    {
+                        mainContext.DrawImage(commandLists[i]);
+                        commandLists[i].Dispose(); // 及时释放临时指令缓冲
+                    }
+                }
+            }
         }
 
-        context.EndDraw();
-
+        mainContext.EndDraw();
         direct2DWrapper.Present();
+    }
+
+    private void EnsureThreadContextPool()
+    {
+        if (direct2DWrapper.Device is null) return;
+
+        int targetThreadCount = Environment.ProcessorCount;
+        if (_threadContextPool != null && _pooledThreadCount == targetThreadCount)
+            return;
+
+        ReleaseThreadContextPool();
+
+        _threadContextPool = new ID2D1DeviceContext[targetThreadCount];
+        _pooledThreadCount = targetThreadCount;
+
+        for (int i = 0; i < targetThreadCount; i++)
+        {
+            _threadContextPool[i] = direct2DWrapper.Device.CreateDeviceContext(DeviceContextOptions.EnableMultithreadedOptimizations);
+        }
+    }
+
+    private void ReleaseThreadContextPool()
+    {
+        if (_threadContextPool != null)
+        {
+            foreach (var ctx in _threadContextPool)
+            {
+                ctx?.Dispose();
+            }
+            _threadContextPool = null;
+        }
+        _pooledThreadCount = 0;
     }
 
     private void Clear()
@@ -114,6 +213,7 @@ public class Direct2dContext : IDrawingContext, ICanvasContext
 
     public void Dispose()
     {
+        ReleaseThreadContextPool();
         direct2DWrapper.Dispose();
     }
 
@@ -153,10 +253,6 @@ public class Direct2dContext : IDrawingContext, ICanvasContext
         if (AlmostSame(oldScale, newScale))
             return;
 
-        // screen = world * scale + offset
-        // 为了让鼠标所在的 world 点保持在 centerX / centerY，不跳动：
-        // world = (center - oldOffset) / oldScale
-        // newOffset = center - world * newScale
         var worldX = (centerX - _offsetX) / oldScale;
         var worldY = (centerY - _offsetY) / oldScale;
 
@@ -169,12 +265,8 @@ public class Direct2dContext : IDrawingContext, ICanvasContext
 
     private static float Clamp(float value, float min, float max)
     {
-        if (value < min)
-            return min;
-
-        if (value > max)
-            return max;
-
+        if (value < min) return min;
+        if (value > max) return max;
         return value;
     }
 

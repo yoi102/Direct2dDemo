@@ -46,6 +46,16 @@ internal sealed class Direct2DWrapper : IDisposable
         }
     }
 
+    // 暴露 Device 给外界，用于多线程安全地创建独立的子 Context
+    public ID2D1Device? Device
+    {
+        get
+        {
+            ThrowIfDisposed();
+            return _d2dDevice;
+        }
+    }
+
     public Direct2DResourceCache? Direct2DResourceCache { get; private set; }
     public bool UsingWarp => _usingWarp;
     public Vortice.Direct3D.FeatureLevel FeatureLevel => _featureLevel;
@@ -59,11 +69,6 @@ internal sealed class Direct2DWrapper : IDisposable
         GetDWriteFactory();
     }
 
-    /// <summary>
-    /// Bind the wrapper to a HWND.
-    /// If the HWND is unchanged, only resize is performed.
-    /// If the HWND changes, the swap chain and target bitmap are recreated.
-    /// </summary>
     public void SetTarget(nint hwnd, int width, int height)
     {
         ThrowIfDisposed();
@@ -231,6 +236,7 @@ internal sealed class Direct2DWrapper : IDisposable
     [MemberNotNull(nameof(_d2dFactory))]
     private void CreateD2DFactory()
     {
+        // 开启多线程支持锁
         _d2dFactory = D2D1.D2D1CreateFactory<ID2D1Factory1>(Vortice.Direct2D1.FactoryType.MultiThreaded);
     }
 
@@ -366,7 +372,6 @@ internal sealed class Direct2DWrapper : IDisposable
                 null,
                 null);
 
-            // Prevent DXGI from handling Alt+Enter automatically.
             _dxgiFactory.MakeWindowAssociation(_hwnd, WindowAssociationFlags.IgnoreAltEnter);
         }
         finally
@@ -458,10 +463,7 @@ internal sealed class Direct2DWrapper : IDisposable
             {
                 _d2dContext?.EndDraw();
             }
-            catch
-            {
-                // Ignore during dispose.
-            }
+            catch { }
             finally
             {
                 _isDrawing = false;
