@@ -12,7 +12,7 @@ public interface IDrawingContext : IDisposable
 
     void HwndResized(int width, int height);
 
-    void Render();
+    Task RenderAsync();
 
     void ClearData();
 }
@@ -20,13 +20,16 @@ public interface IDrawingContext : IDisposable
 public interface IDrawingGdiContext
 {
     void BitBlt(nint hdc);
+
     void BitBlt();
 }
 
 public interface ICanvasContext
 {
     void BeginPan(int x, int y);
+
     void Pan(int x, int y);
+
     void EndPan(int x, int y);
 
     void Zoom(float zoomFactor, int centerX, int centerY);

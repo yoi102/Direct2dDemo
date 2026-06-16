@@ -73,16 +73,16 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         stopwatch.Stop();
         this.DataGenerationTime = stopwatch.ElapsedMilliseconds;
 
-        await Task.Delay(1000); // 模拟一些额外的处理时间，方便观察 UI 反应
+        await Direct2dContext.RenderAsync();
 
-        Direct2dContext.Render();
-
-        GdiContext.Render();
+        GdiContext.RenderAsync();
     }
 
     [ObservableProperty]
     public partial bool Running { get; set; } = false;
+
     private bool _Direct2DEnableMultiThread;
+
     public bool Direct2DEnableMultiThread
     {
         get { return _Direct2DEnableMultiThread; }
@@ -174,11 +174,9 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         stopwatch.Stop();
         this.DataGenerationTime = stopwatch.ElapsedMilliseconds;
 
-        await Task.Delay(3000); // 模拟一些额外的处理时间，方便观察 UI 反应
+        await Direct2dContext.RenderAsync();
 
-        Direct2dContext.Render();
-
-        GdiContext.Render();
+        await GdiContext.RenderAsync();
     }
 
     [RelayCommand]
@@ -206,11 +204,9 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         stopwatch.Stop();
         this.DataGenerationTime = stopwatch.ElapsedMilliseconds;
 
-        await Task.Delay(3000); // 模拟一些额外的处理时间，方便观察 UI 反应
+        await Direct2dContext.RenderAsync();
 
-        Direct2dContext.Render();
-
-        GdiContext.Render();
+        await GdiContext.RenderAsync();
     }
 
     [RelayCommand]
@@ -240,11 +236,9 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         stopwatch.Stop();
         DataGenerationTime = stopwatch.ElapsedMilliseconds;
 
-        await Task.Delay(3000); // 模拟一些额外的处理时间，方便观察 UI 反应
+        await Direct2dContext.RenderAsync();
 
-        Direct2dContext.Render();
-
-        GdiContext.Render();
+        await GdiContext.RenderAsync();
     }
 
     [RelayCommand]
@@ -273,11 +267,10 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
         stopwatch.Stop();
         DataGenerationTime = stopwatch.ElapsedMilliseconds;
-        await Task.Delay(3000); // 模拟一些额外的处理时间，方便观察 UI 反应
 
-        Direct2dContext.Render();
+        await Direct2dContext.RenderAsync();
 
-        GdiContext.Render();
+        await GdiContext.RenderAsync();
     }
 
     [RelayCommand]
@@ -306,11 +299,10 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
         stopwatch.Stop();
         DataGenerationTime = stopwatch.ElapsedMilliseconds;
-        await Task.Delay(3000); // 模拟一些额外的处理时间，方便观察 UI 反应
 
-        Direct2dContext.Render();
+        await Direct2dContext.RenderAsync();
 
-        GdiContext.Render();
+        await GdiContext.RenderAsync();
     }
 
     [RelayCommand]
@@ -339,11 +331,10 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
         stopwatch.Stop();
         DataGenerationTime = stopwatch.ElapsedMilliseconds;
-        await Task.Delay(3000); // 模拟一些额外的处理时间，方便观察 UI 反应
 
-        Direct2dContext.Render();
+        await Direct2dContext.RenderAsync();
 
-        GdiContext.Render();
+        await GdiContext.RenderAsync();
     }
 
     [RelayCommand]
@@ -372,11 +363,10 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
         stopwatch.Stop();
         DataGenerationTime = stopwatch.ElapsedMilliseconds;
-        await Task.Delay(3000); // 模拟一些额外的处理时间，方便观察 UI 反应
 
-        Direct2dContext.Render();
+        await Direct2dContext.RenderAsync();
 
-        GdiContext.Render();
+        await GdiContext.RenderAsync();
     }
 
     [RelayCommand]
@@ -385,8 +375,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         Running = true;
         using var _ = DeferAction.Create(() => Running = false);
 
-        await Task.Delay(500); // 模拟一些额外的处理时间，方便观察 UI 反应
-        Direct2dContext.Render();
+        await Direct2dContext.RenderAsync();
     }
 
     [RelayCommand]
@@ -395,10 +384,9 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         Running = true;
         using var _ = DeferAction.Create(() => Running = false);
 
-        await Task.Delay(500); // 模拟一些额外的处理时间，方便观察 UI 反应
-        Direct2dContext.Render();
+        await Direct2dContext.RenderAsync();
 
-        GdiContext.Render();
+        await GdiContext.RenderAsync();
     }
 
     public void Dispose()

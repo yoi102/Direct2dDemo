@@ -133,8 +133,14 @@ internal sealed class GdiWrapper : IDisposable
     public void BitBlt(nint hdc)
     {
         ThrowIfDisposed();
-        EnsureTargetReady();
-
+        try
+        {
+            EnsureTargetReady();
+        }
+        catch (Exception)
+        {
+            return;
+        }
         if (hdc == nint.Zero)
             throw new InvalidOperationException("GetDC failed.");
 
