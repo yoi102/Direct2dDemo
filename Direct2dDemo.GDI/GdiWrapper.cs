@@ -155,7 +155,7 @@ internal sealed class GdiWrapper : IDisposable
                 0,
                 RasterOperationMode.SRCCOPY))
         {
-            throw new InvalidOperationException("BitBlt failed.");
+            //throw new InvalidOperationException("BitBlt failed.");
         }
     }
 
