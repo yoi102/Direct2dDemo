@@ -430,7 +430,7 @@ public class ShapeElementGenerator
 
     private static DashStyle RandomDashStyle()
     {
-        //return DashStyle.Solid;
+        return DashStyle.Solid;
 
         return NextInt(0, 5) switch
         {
@@ -454,7 +454,7 @@ public class ShapeElementGenerator
 
     private static CapStyle RandomCapStyle()
     {
-        //return CapStyle.Round;
+        return CapStyle.Round;
 
         return NextInt(0, 3) switch
         {
