@@ -34,39 +34,39 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         var stopwatch = Stopwatch.StartNew();
 
         var ellipse_elements = await ShapeElementGenerator.GenEllipseElement(hwndWidth, hwndHeight, addCount);
-        Direct2dContext.DrawingElements.AddRange(ellipse_elements);
+        Direct2dContext.AddDrawingElements(ellipse_elements);
         GdiContext.DrawingElements.AddRange(ellipse_elements);
         this.EllipseCount += ellipse_elements.Count;
 
         var ellipse_geometry_elements = await ShapeElementGenerator.GenEllipseGeometryElement(hwndWidth, hwndHeight, addCount);
-        Direct2dContext.DrawingElements.AddRange(ellipse_geometry_elements);
+        Direct2dContext.AddDrawingElements(ellipse_geometry_elements);
         GdiContext.DrawingElements.AddRange(ellipse_geometry_elements);
         this.EllipseGeometryCount += ellipse_geometry_elements.Count;
 
         var polygon_elements = await ShapeElementGenerator.GenPolygonGeometryElement(hwndWidth, hwndHeight, addCount);
 
-        Direct2dContext.DrawingElements.AddRange(polygon_elements);
+        Direct2dContext.AddDrawingElements(polygon_elements);
         GdiContext.DrawingElements.AddRange(polygon_elements);
         PolygonCount += polygon_elements.Count;
 
         var rectangle_elements = await ShapeElementGenerator.GenRectangleElement(hwndWidth, hwndHeight, addCount);
-        Direct2dContext.DrawingElements.AddRange(rectangle_elements);
+        Direct2dContext.AddDrawingElements(rectangle_elements);
         GdiContext.DrawingElements.AddRange(rectangle_elements);
         this.RectangleCount += rectangle_elements.Count;
 
         var rectangle_geometry_elements = await ShapeElementGenerator.GenRectangleGeometryElement(hwndWidth, hwndHeight, addCount);
-        Direct2dContext.DrawingElements.AddRange(rectangle_geometry_elements);
+        Direct2dContext.AddDrawingElements(rectangle_geometry_elements);
         GdiContext.DrawingElements.AddRange(rectangle_geometry_elements);
         this.RectangleGeometryCount += rectangle_geometry_elements.Count;
 
         var line_elements = await ShapeElementGenerator.GenLineElement(hwndWidth, hwndHeight, addCount);
-        Direct2dContext.DrawingElements.AddRange(line_elements);
+        Direct2dContext.AddDrawingElements(line_elements);
         GdiContext.DrawingElements.AddRange(line_elements);
         this.LineCount += line_elements.Count;
 
         var text_elements = await ShapeElementGenerator.GenTextElement(hwndWidth, hwndHeight, addCount);
 
-        Direct2dContext.DrawingElements.AddRange(text_elements);
+        Direct2dContext.AddDrawingElements(text_elements);
         GdiContext.DrawingElements.AddRange(text_elements);
         TextCount += text_elements.Count;
 
@@ -75,7 +75,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
         await Direct2dContext.RenderAsync();
 
-        GdiContext.RenderAsync();
+        await GdiContext.RenderAsync();
     }
 
     [ObservableProperty]
@@ -92,6 +92,21 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
             {
                 Direct2dContext.EnableMultiThread = value;
             }
+        }
+    }
+
+    public IReadOnlyList<MultiThreadPartitionMode> Direct2DPartitionModes { get; } =
+        Enum.GetValues<MultiThreadPartitionMode>();
+
+    private MultiThreadPartitionMode _direct2DPartitionMode = MultiThreadPartitionMode.Auto;
+
+    public MultiThreadPartitionMode Direct2DPartitionMode
+    {
+        get => _direct2DPartitionMode;
+        set
+        {
+            if (SetProperty(ref _direct2DPartitionMode, value))
+                Direct2dContext.MultiThreadPartitionMode = value;
         }
     }
 
@@ -167,7 +182,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         var stopwatch = Stopwatch.StartNew();
 
         var elements = await ShapeElementGenerator.GenEllipseGeometryElement(hwndWidth, hwndHeight, addCount);
-        Direct2dContext.DrawingElements.AddRange(elements);
+        Direct2dContext.AddDrawingElements(elements);
         GdiContext.DrawingElements.AddRange(elements);
 
         this.EllipseGeometryCount += elements.Count;
@@ -197,7 +212,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
         var stopwatch = Stopwatch.StartNew();
 
         var elements = await ShapeElementGenerator.GenEllipseElement(hwndWidth, hwndHeight, addCount);
-        Direct2dContext.DrawingElements.AddRange(elements);
+        Direct2dContext.AddDrawingElements(elements);
         GdiContext.DrawingElements.AddRange(elements);
 
         this.EllipseCount += elements.Count;
@@ -229,7 +244,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
         var elements = await ShapeElementGenerator.GenPolygonGeometryElement(hwndWidth, hwndHeight, addCount);
 
-        Direct2dContext.DrawingElements.AddRange(elements);
+        Direct2dContext.AddDrawingElements(elements);
         GdiContext.DrawingElements.AddRange(elements);
         PolygonCount += elements.Count;
 
@@ -261,7 +276,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
         var elements = await ShapeElementGenerator.GenRectangleGeometryElement(hwndWidth, hwndHeight, addCount);
 
-        Direct2dContext.DrawingElements.AddRange(elements);
+        Direct2dContext.AddDrawingElements(elements);
         GdiContext.DrawingElements.AddRange(elements);
         RectangleGeometryCount += elements.Count;
 
@@ -293,7 +308,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
         var elements = await ShapeElementGenerator.GenRectangleElement(hwndWidth, hwndHeight, addCount);
 
-        Direct2dContext.DrawingElements.AddRange(elements);
+        Direct2dContext.AddDrawingElements(elements);
         GdiContext.DrawingElements.AddRange(elements);
         RectangleCount += elements.Count;
 
@@ -325,7 +340,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
         var elements = await ShapeElementGenerator.GenLineElement(hwndWidth, hwndHeight, addCount);
 
-        Direct2dContext.DrawingElements.AddRange(elements);
+        Direct2dContext.AddDrawingElements(elements);
         GdiContext.DrawingElements.AddRange(elements);
         LineCount += elements.Count;
 
@@ -357,7 +372,7 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
 
         var elements = await ShapeElementGenerator.GenTextElement(hwndWidth, hwndHeight, addCount);
 
-        Direct2dContext.DrawingElements.AddRange(elements);
+        Direct2dContext.AddDrawingElements(elements);
         GdiContext.DrawingElements.AddRange(elements);
         TextCount += elements.Count;
 

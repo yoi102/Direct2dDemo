@@ -16,9 +16,14 @@ public class Direct2dContext : IDrawingContext, ICanvasContext
 
     /// <summary>
     /// 保护 DrawingElements、offset、scale 等状态。
-    /// 注意：如果外部直接修改 DrawingElements，最好也统一在 UI 线程修改，或者额外加锁。
+    /// 外部批量添加请使用 AddDrawingElements，避免渲染线程创建快照时与 List 写入冲突。
     /// </summary>
     private readonly object _stateLock = new();
+
+    /// <summary>
+    /// 保证“检查 Dispose 状态”和“投递/唤醒渲染线程”是一个原子操作。
+    /// </summary>
+    private readonly object _lifecycleLock = new();
 
     /// <summary>
     /// 渲染线程命令队列。Resize、Reset、Dispose 等 Direct2D 资源操作都放到渲染线程执行。
@@ -52,6 +57,14 @@ public class Direct2dContext : IDrawingContext, ICanvasContext
     /// Dispose 是否已经开始。
     /// </summary>
     private int _disposeStarted;
+
+    /// <summary>
+    /// 这些字段保存调用线程期望的配置；真正的 GPU 资源变更统一在渲染线程应用。
+    /// </summary>
+    private int _multiThreadEnabled;
+    private int _multiThreadDeviceCount = MultiDeviceRenderer.DefaultDeviceCount;
+    private int _multiThreadThreshold = MultiDeviceRenderer.DefaultThreshold;
+    private int _multiThreadPartitionMode = (int)MultiThreadPartitionMode.Auto;
 
     /// <summary>
     /// 用于把 Rendered 事件切回创建 Direct2dContext 的线程。
@@ -94,13 +107,33 @@ public class Direct2dContext : IDrawingContext, ICanvasContext
 
     public List<IDrawingElement> DrawingElements { get; } = new();
 
+    public void AddDrawingElements(IEnumerable<IDrawingElement> elements)
+    {
+        ArgumentNullException.ThrowIfNull(elements);
+
+        if (IsDisposing)
+            return;
+
+        lock (_stateLock)
+        {
+            DrawingElements.AddRange(elements);
+        }
+    }
+
     /// <summary>
     /// 开启后：元素数量超过 MultiThreadThreshold 时，使用多个独立 Device 离屏并行绘制。
     /// </summary>
     public bool EnableMultiThread
     {
-        get => _multiDeviceRenderer.Enabled;
-        set => _multiDeviceRenderer.Enabled = value;
+        get => Volatile.Read(ref _multiThreadEnabled) != 0;
+        set
+        {
+            var newValue = value ? 1 : 0;
+            if (Interlocked.Exchange(ref _multiThreadEnabled, newValue) == newValue)
+                return;
+
+            QueueMultiThreadSettingsUpdate();
+        }
     }
 
     /// <summary>
@@ -108,8 +141,15 @@ public class Direct2dContext : IDrawingContext, ICanvasContext
     /// </summary>
     public int MultiThreadDeviceCount
     {
-        get => _multiDeviceRenderer.DeviceCount;
-        set => _multiDeviceRenderer.DeviceCount = value;
+        get => Volatile.Read(ref _multiThreadDeviceCount);
+        set
+        {
+            var newValue = MultiDeviceRenderer.NormalizeDeviceCount(value);
+            if (Interlocked.Exchange(ref _multiThreadDeviceCount, newValue) == newValue)
+                return;
+
+            QueueMultiThreadSettingsUpdate();
+        }
     }
 
     /// <summary>
@@ -117,8 +157,34 @@ public class Direct2dContext : IDrawingContext, ICanvasContext
     /// </summary>
     public int MultiThreadThreshold
     {
-        get => _multiDeviceRenderer.Threshold;
-        set => _multiDeviceRenderer.Threshold = value;
+        get => Volatile.Read(ref _multiThreadThreshold);
+        set
+        {
+            var newValue = Math.Max(0, value);
+            if (Interlocked.Exchange(ref _multiThreadThreshold, newValue) == newValue)
+                return;
+
+            QueueMultiThreadSettingsUpdate();
+        }
+    }
+
+    /// <summary>
+    /// Auto 会根据元素跨 tile 重复率和负载偏斜自动选择 Tiles 或 ElementChunks。
+    /// </summary>
+    public MultiThreadPartitionMode MultiThreadPartitionMode
+    {
+        get => (MultiThreadPartitionMode)Volatile.Read(ref _multiThreadPartitionMode);
+        set
+        {
+            if (!Enum.IsDefined(value))
+                throw new ArgumentOutOfRangeException(nameof(value));
+
+            var newValue = (int)value;
+            if (Interlocked.Exchange(ref _multiThreadPartitionMode, newValue) == newValue)
+                return;
+               
+            QueueMultiThreadSettingsUpdate();
+        }
     }
 
     public void Initialize(nint hwnd, int width, int height)
@@ -189,22 +255,37 @@ public class Direct2dContext : IDrawingContext, ICanvasContext
 
     public void Dispose()
     {
-        if (Interlocked.Exchange(ref _disposeStarted, 1) != 0)
-            return;
-
         var disposeCompletion = new TaskCompletionSource<bool>(
             TaskCreationOptions.RunContinuationsAsynchronously);
 
-        _renderActions.Enqueue(new RenderThreadAction(
-            action: () =>
-            {
-                _multiDeviceRenderer.Dispose();
-                _direct2DWrapper.Dispose();
-            },
-            completion: disposeCompletion,
-            stopAfterExecute: true));
+        lock (_lifecycleLock)
+        {
+            if (Interlocked.Exchange(ref _disposeStarted, 1) != 0)
+                return;
 
-        _renderSignal.Set();
+            _renderActions.Enqueue(new RenderThreadAction(
+                action: () =>
+                {
+                    CompleteRenderWaiters(new ObjectDisposedException(nameof(Direct2dContext)));
+                    try
+                    {
+                        _multiDeviceRenderer.Dispose();
+                    }
+                    finally
+                    {
+                        _direct2DWrapper.Dispose();
+                    }
+                },
+                completion: disposeCompletion,
+                stopAfterExecute: true));
+
+            _renderSignal.Set();
+        }
+
+        // Rendered 事件没有 SynchronizationContext 时可能就在渲染线程触发。
+        // 此时只投递停止命令，不能等待自己，否则会死锁。
+        if (Thread.CurrentThread == _renderThread)
+            return;
 
         try
         {
@@ -215,10 +296,7 @@ public class Direct2dContext : IDrawingContext, ICanvasContext
             Debug.WriteLine(ex);
         }
 
-        if (Thread.CurrentThread != _renderThread)
-            _renderThread.Join();
-
-        _renderSignal.Dispose();
+        _renderThread.Join();
     }
 
     public void BeginPan(int x, int y)
@@ -288,11 +366,14 @@ public class Direct2dContext : IDrawingContext, ICanvasContext
     /// </summary>
     private void RequestRender()
     {
-        if (IsDisposing)
-            return;
+        lock (_lifecycleLock)
+        {
+            if (IsDisposing)
+                return;
 
-        Interlocked.Exchange(ref _renderRequested, 1);
-        _renderSignal.Set();
+            Interlocked.Exchange(ref _renderRequested, 1);
+            _renderSignal.Set();
+        }
     }
 
     /// <summary>
@@ -300,21 +381,24 @@ public class Direct2dContext : IDrawingContext, ICanvasContext
     /// </summary>
     private Task RenderCurrentViewAsync()
     {
-        if (IsDisposing)
-            return Task.CompletedTask;
-
-        var tcs = new TaskCompletionSource<bool>(
-            TaskCreationOptions.RunContinuationsAsynchronously);
-
-        lock (_renderWaitersLock)
+        lock (_lifecycleLock)
         {
-            _renderWaiters.Add(tcs);
+            if (IsDisposing)
+                return Task.CompletedTask;
+
+            var tcs = new TaskCompletionSource<bool>(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+
+            lock (_renderWaitersLock)
+            {
+                _renderWaiters.Add(tcs);
+            }
+
+            Interlocked.Exchange(ref _renderRequested, 1);
+            _renderSignal.Set();
+
+            return tcs.Task;
         }
-
-        Interlocked.Exchange(ref _renderRequested, 1);
-        _renderSignal.Set();
-
-        return tcs.Task;
     }
 
     /// <summary>
@@ -322,11 +406,29 @@ public class Direct2dContext : IDrawingContext, ICanvasContext
     /// </summary>
     private void PostRenderAction(Action action)
     {
-        if (IsDisposing)
-            return;
+        lock (_lifecycleLock)
+        {
+            if (IsDisposing)
+                return;
 
-        _renderActions.Enqueue(new RenderThreadAction(action));
-        _renderSignal.Set();
+            _renderActions.Enqueue(new RenderThreadAction(action));
+            _renderSignal.Set();
+        }
+    }
+
+    private void QueueMultiThreadSettingsUpdate()
+    {
+        PostRenderAction(() =>
+        {
+            // 顺序很重要：先调整池大小和阈值，最后决定是否启用。
+            _multiDeviceRenderer.DeviceCount = Volatile.Read(ref _multiThreadDeviceCount);
+            _multiDeviceRenderer.Threshold = Volatile.Read(ref _multiThreadThreshold);
+            _multiDeviceRenderer.PartitionMode =
+                (MultiThreadPartitionMode)Volatile.Read(ref _multiThreadPartitionMode);
+            _multiDeviceRenderer.Enabled = Volatile.Read(ref _multiThreadEnabled) != 0;
+        });
+
+        RequestRender();
     }
 
     /// <summary>
@@ -337,46 +439,54 @@ public class Direct2dContext : IDrawingContext, ICanvasContext
     {
         var stop = false;
 
-        while (!stop)
+        try
         {
-            _renderSignal.WaitOne();
-
-            do
+            while (!stop)
             {
-                while (_renderActions.TryDequeue(out var renderAction))
+                _renderSignal.WaitOne();
+
+                do
                 {
-                    try
+                    while (_renderActions.TryDequeue(out var renderAction))
                     {
-                        renderAction.Action();
-                        renderAction.Completion?.TrySetResult(true);
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.WriteLine(ex);
-                        renderAction.Completion?.TrySetException(ex);
+                        try
+                        {
+                            renderAction.Action();
+                            renderAction.Completion?.TrySetResult(true);
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine(ex);
+                            renderAction.Completion?.TrySetException(ex);
+                        }
+
+                        if (renderAction.StopAfterExecute)
+                        {
+                            stop = true;
+                            break;
+                        }
                     }
 
-                    if (renderAction.StopAfterExecute)
-                    {
-                        stop = true;
+                    if (stop)
                         break;
+
+                    if (Interlocked.Exchange(ref _renderRequested, 0) == 1)
+                    {
+                        ExecuteRenderOnRenderThread();
                     }
+
+                    // 如果渲染过程中又来了 Pan / Zoom / Resize，
+                    // 这里会继续处理，不需要 UI 线程等待。
                 }
-
-                if (stop)
-                    break;
-
-                if (Interlocked.Exchange(ref _renderRequested, 0) == 1)
-                {
-                    ExecuteRenderOnRenderThread();
-                }
-
-                // 如果渲染过程中又来了 Pan / Zoom / Resize，
-                // 这里会继续处理，不需要 UI 线程等待。
+                while (!stop &&
+                       (!_renderActions.IsEmpty ||
+                        Volatile.Read(ref _renderRequested) == 1));
             }
-            while (!stop &&
-                   (!_renderActions.IsEmpty ||
-                    Volatile.Read(ref _renderRequested) == 1));
+        }
+        finally
+        {
+            CompleteRenderWaiters(new ObjectDisposedException(nameof(Direct2dContext)));
+            _renderSignal.Dispose();
         }
     }
 
@@ -399,8 +509,7 @@ public class Direct2dContext : IDrawingContext, ICanvasContext
 
             _stopwatch.Restart();
 
-            // InternalRenderAsync 在后台渲染线程执行，不会卡 UI。
-            InternalRenderAsync().GetAwaiter().GetResult();
+            InternalRender();
 
             _stopwatch.Stop();
 
@@ -422,15 +531,11 @@ public class Direct2dContext : IDrawingContext, ICanvasContext
     }
 
     /// <summary>
-    /// 这个方法仍然是 async Task，并且实际由后台渲染线程调用。
-    /// 注意：不要在这里 Task.Run mainContext.BeginDraw / EndDraw。
+    /// 实际绘制始终由专用渲染线程同步提交。
+    /// 不要把 mainContext.BeginDraw / EndDraw 放进 Task.Run。
     /// </summary>
-    private async Task InternalRenderAsync()
+    private void InternalRender()
     {
-        // 保留 async 形式。
-        // 不使用 Task.Yield，避免 continuation 跑到 ThreadPool 的其他线程。
-        await Task.CompletedTask;
-
         var mainContext = _direct2DWrapper.Context;
         var mainCache = _direct2DWrapper.Direct2DResourceCache;
 
@@ -534,16 +639,33 @@ public class Direct2dContext : IDrawingContext, ICanvasContext
 
     private void RaiseRendered(double elapsedMilliseconds)
     {
-        if (_syncContext is not null)
+        void InvokeRendered()
         {
-            _syncContext.Post(_ =>
+            try
             {
                 Rendered?.Invoke(this, elapsedMilliseconds);
-            }, null);
+            }
+            catch (Exception ex)
+            {
+                // 订阅者异常不能终止专用渲染线程，否则后续 RenderAsync 将永远无法完成。
+                Debug.WriteLine(ex);
+            }
+        }
+
+        if (_syncContext is not null)
+        {
+            try
+            {
+                _syncContext.Post(_ => InvokeRendered(), null);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine(ex);
+            }
         }
         else
         {
-            Rendered?.Invoke(this, elapsedMilliseconds);
+            InvokeRendered();
         }
     }
 

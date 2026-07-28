@@ -322,7 +322,9 @@ internal class Direct2DResourceCache(ID2D1Factory d2D1Factory, IDWriteFactory iD
         ClearLazyCache(_hatchBrushCache);
     }
 
-    private static void ClearLazyCache<TKey, TValue>(ConcurrentDictionary<TKey, Lazy<TValue>> cache) where TValue : IDisposable
+    private static void ClearLazyCache<TKey, TValue>(ConcurrentDictionary<TKey, Lazy<TValue>> cache)
+        where TKey : notnull
+        where TValue : IDisposable
     {
         foreach (var item in cache.Values)
         {

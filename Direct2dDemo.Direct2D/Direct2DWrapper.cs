@@ -34,8 +34,8 @@ internal sealed class Direct2DWrapper : IDisposable
     private bool _disposed;
     private bool _isDrawing;
 
-    public int Width => _width;
-    public int Height => _height;
+    public int Width => Volatile.Read(ref _width);
+    public int Height => Volatile.Read(ref _height);
     public IDWriteFactory? DwriteFactory => _dwriteFactory;
 
     public ID2D1DeviceContext? Context

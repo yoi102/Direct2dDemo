@@ -45,6 +45,9 @@
                         </Grid>
                         <CheckBox Margin="20 10 0 0" Content="D2D_EnableMultiThread"
                                   IsChecked="{Binding Direct2DEnableMultiThread}"/>
+                        <ComboBox Margin="20 5 0 5"
+                                  ItemsSource="{Binding Direct2DPartitionModes}"
+                                  SelectedItem="{Binding Direct2DPartitionMode}"/>
                         <GroupBox Margin="0 10 0 0" Header="DirectDrawElements">
                             <StackPanel>
                                 <Grid Margin="0 0 5 0"

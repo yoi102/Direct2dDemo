@@ -34,6 +34,10 @@
                     </Grid>
                     <CheckBox Content="D2D_EnableMultiThread"
                               IsChecked="{Binding Direct2DEnableMultiThread}"/>
+                    <ComboBox Margin="0 5 0 5"
+                              ItemsSource="{Binding Direct2DPartitionModes}"
+                              SelectedItem="{Binding Direct2DPartitionMode}"
+                              ToolTip="Auto / ElementChunks / Tiles"/>
 
                     <GroupBox>
                         <GroupBox.Header>
