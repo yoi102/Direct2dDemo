@@ -12,8 +12,8 @@ using Vortice.Mathematics;
 namespace Direct2dDemo.Direct2D;
 
 /// <summary>
-/// 负责多 D3D/D2D Device 的离屏并行绘制和主 Device 合成。
-/// Direct2dContext 只需要决定“要不要用多 Device”，不用关心共享 Texture、KeyedMutex、Device Pool 等细节。
+/// 负责 Direct2D 离屏并行绘制和主 Context 合成。
+/// 支持“多个独立 Device”和“单 Device + 多个 Context”两种 Worker 拓扑。
 /// </summary>
 internal sealed class MultiDeviceRenderer : IDisposable
 {
@@ -27,7 +27,7 @@ internal sealed class MultiDeviceRenderer : IDisposable
 
     private readonly Direct2DWrapper _owner;
 
-    private ThreadDeviceSlot[]? _slots;
+    private IRenderSlot[]? _slots;
     private int _pooledDeviceCount;
     private bool _enabled;
     private bool _disposed;
@@ -36,6 +36,7 @@ internal sealed class MultiDeviceRenderer : IDisposable
     private int _deviceCount = DefaultDeviceCount;
     private int _threshold = DefaultThreshold;
     private MultiThreadPartitionMode _partitionMode = MultiThreadPartitionMode.Auto;
+    private MultiThreadDeviceMode _deviceMode = MultiThreadDeviceMode.MultipleDevices;
 
     public MultiDeviceRenderer(Direct2DWrapper owner)
     {
@@ -99,6 +100,24 @@ internal sealed class MultiDeviceRenderer : IDisposable
         }
     }
 
+    public MultiThreadDeviceMode DeviceMode
+    {
+        get => _deviceMode;
+        set
+        {
+            ThrowIfDisposed();
+
+            if (!Enum.IsDefined(value))
+                throw new ArgumentOutOfRangeException(nameof(value));
+
+            if (_deviceMode == value)
+                return;
+
+            _deviceMode = value;
+            Reset();
+        }
+    }
+
     internal static int NormalizeDeviceCount(int value)
     {
         // 每个 Device 都需要一张窗口大小的离屏纹理；继续按 CPU 核数扩张通常只会增加
@@ -117,7 +136,7 @@ internal sealed class MultiDeviceRenderer : IDisposable
         ThrowIfDisposed();
         frameLease = null;
 
-        if (!CanUseMultiDevice(elements.Length))
+        if (!CanUseParallelRendering(elements.Length))
             return false;
 
         var maxUsefulTileCount = Math.Max(1, (_owner.Width + 7) / 8);
@@ -147,7 +166,7 @@ internal sealed class MultiDeviceRenderer : IDisposable
         }
         catch (Exception ex)
         {
-            // 多 Device 是优化路径。驱动不支持共享纹理或资源不足时，本帧退回主 Device，
+            // 并行绘制是优化路径。驱动不支持所选资源拓扑或资源不足时，本帧退回主 Context，
             // 并在下一次 Reset（尺寸/配置变化）时再尝试创建。
             Debug.WriteLine(ex);
             DisposeSlots();
@@ -189,7 +208,7 @@ internal sealed class MultiDeviceRenderer : IDisposable
         _disposed = true;
     }
 
-    private bool CanUseMultiDevice(int elementCount)
+    private bool CanUseParallelRendering(int elementCount)
     {
         return _enabled
             && !_poolCreationFailed
@@ -198,8 +217,14 @@ internal sealed class MultiDeviceRenderer : IDisposable
             && _owner.Width > 0
             && _owner.Height > 0
             && _owner.Context is not null
-            && _owner.D3DDevice is not null
-            && _owner.DwriteFactory is not null;
+            && _owner.DwriteFactory is not null
+            && (_deviceMode switch
+            {
+                MultiThreadDeviceMode.MultipleDevices => _owner.D3DDevice is not null,
+                MultiThreadDeviceMode.SingleDeviceMultipleContexts =>
+                    _owner.Device is not null && _owner.Factory is not null,
+                _ => false
+            });
     }
 
     private RenderPlan CreateRenderPlan(
@@ -415,30 +440,50 @@ internal sealed class MultiDeviceRenderer : IDisposable
 
         Reset();
 
-        if (_owner.D3DDevice is null ||
-            _owner.DwriteFactory is null ||
-            _owner.Context is null)
+        if (_owner.DwriteFactory is null || _owner.Context is null)
         {
             return;
         }
 
-        var newSlots = new ThreadDeviceSlot[targetDeviceCount];
-
-        using var mainDxgiDevice = _owner.D3DDevice.QueryInterface<IDXGIDevice>();
-        using var adapter = mainDxgiDevice.GetAdapter();
+        var newSlots = new IRenderSlot[targetDeviceCount];
 
         try
         {
-            for (var i = 0; i < targetDeviceCount; i++)
+            if (_deviceMode == MultiThreadDeviceMode.MultipleDevices)
             {
-                var batch = renderPlan.SlotBatches[i];
-                newSlots[i] = ThreadDeviceSlot.Create(
-                    adapter,
-                    _owner.D3DDevice,
-                    _owner.DwriteFactory,
-                    _owner.Context,
-                    batch.TargetWidth,
-                    batch.TargetHeight);
+                if (_owner.D3DDevice is null)
+                    return;
+
+                using var mainDxgiDevice = _owner.D3DDevice.QueryInterface<IDXGIDevice>();
+                using var adapter = mainDxgiDevice.GetAdapter();
+
+                for (var i = 0; i < targetDeviceCount; i++)
+                {
+                    var batch = renderPlan.SlotBatches[i];
+                    newSlots[i] = MultiDeviceSlot.Create(
+                        adapter,
+                        _owner.D3DDevice,
+                        _owner.DwriteFactory,
+                        _owner.Context,
+                        batch.TargetWidth,
+                        batch.TargetHeight);
+                }
+            }
+            else
+            {
+                if (_owner.Device is null || _owner.Factory is null)
+                    return;
+
+                for (var i = 0; i < targetDeviceCount; i++)
+                {
+                    var batch = renderPlan.SlotBatches[i];
+                    newSlots[i] = SharedDeviceContextSlot.Create(
+                        _owner.Device,
+                        _owner.Factory,
+                        _owner.DwriteFactory,
+                        batch.TargetWidth,
+                        batch.TargetHeight);
+                }
             }
         }
         catch
@@ -680,7 +725,29 @@ internal sealed class MultiDeviceRenderer : IDisposable
         public int CompositeY { get; }
     }
 
-    internal sealed class ThreadDeviceSlot : IDisposable
+    internal interface IRenderSlot : IDisposable
+    {
+        ID2D1Bitmap1 MainReadableBitmap { get; }
+
+        int TargetWidth { get; }
+
+        int TargetHeight { get; }
+
+        void DrawBatch(RenderBatch batch);
+
+        void AcquireForMainRead();
+
+        void ReleaseToWorkerWrite();
+
+        void ReleaseUnreadFrameToWorker();
+
+        void ClearResourceCache();
+    }
+
+    /// <summary>
+    /// 独立 Device Worker。使用共享 D3D11 Texture 和 keyed mutex 跨 Device 合成。
+    /// </summary>
+    internal sealed class MultiDeviceSlot : IRenderSlot
     {
         private readonly object _useLock = new();
         private readonly ID3D11Device _workerD3DDevice;
@@ -697,7 +764,7 @@ internal sealed class MultiDeviceRenderer : IDisposable
 
         private readonly Direct2DResourceCache _resourceCache;
 
-        private ThreadDeviceSlot(
+        private MultiDeviceSlot(
             ID3D11Device workerD3DDevice,
             ID3D11DeviceContext workerD3DContext,
             IDXGIDevice workerDxgiDevice,
@@ -735,7 +802,7 @@ internal sealed class MultiDeviceRenderer : IDisposable
 
         public int TargetHeight { get; }
 
-        public static ThreadDeviceSlot Create(
+        public static MultiDeviceSlot Create(
             IDXGIAdapter adapter,
             ID3D11Device mainD3DDevice,
             IDWriteFactory dwriteFactory,
@@ -803,7 +870,7 @@ internal sealed class MultiDeviceRenderer : IDisposable
 
                 resourceCache = new Direct2DResourceCache(workerD2DFactory, dwriteFactory, workerD2DContext);
 
-                return new ThreadDeviceSlot(
+                return new MultiDeviceSlot(
                     workerD3DDevice,
                     workerD3DContext,
                     workerDxgiDevice,
@@ -844,7 +911,7 @@ internal sealed class MultiDeviceRenderer : IDisposable
             }
         }
 
-        internal void DrawBatch(RenderBatch batch)
+        public void DrawBatch(RenderBatch batch)
         {
             lock (_useLock)
             {
@@ -996,24 +1063,212 @@ internal sealed class MultiDeviceRenderer : IDisposable
             return mainContext.CreateBitmapFromDxgiSurface(mainSurface, bitmapProperties);
         }
     }
+
+    /// <summary>
+    /// 共享主 D2D Device 的 Worker。每个 Slot 只拥有独立 DeviceContext、目标位图和资源缓存；
+    /// 目标位图与主 Context 属于同一资源域，因此不需要共享 Handle 或 keyed mutex。
+    /// </summary>
+    internal sealed class SharedDeviceContextSlot : IRenderSlot
+    {
+        private readonly object _useLock = new();
+        private readonly ID2D1DeviceContext _workerD2DContext;
+        private readonly ID2D1Bitmap1 _workerTargetBitmap;
+        private readonly Direct2DResourceCache _resourceCache;
+        private int _frameReadyForMain;
+        private bool _disposed;
+
+        private SharedDeviceContextSlot(
+            ID2D1DeviceContext workerD2DContext,
+            ID2D1Bitmap1 workerTargetBitmap,
+            Direct2DResourceCache resourceCache)
+        {
+            _workerD2DContext = workerD2DContext;
+            _workerTargetBitmap = workerTargetBitmap;
+            _resourceCache = resourceCache;
+            TargetWidth = (int)workerTargetBitmap.PixelSize.Width;
+            TargetHeight = (int)workerTargetBitmap.PixelSize.Height;
+        }
+
+        public ID2D1Bitmap1 MainReadableBitmap => _workerTargetBitmap;
+
+        public int TargetWidth { get; }
+
+        public int TargetHeight { get; }
+
+        public static SharedDeviceContextSlot Create(
+            ID2D1Device sharedDevice,
+            ID2D1Factory1 sharedFactory,
+            IDWriteFactory dwriteFactory,
+            int width,
+            int height)
+        {
+            ID2D1DeviceContext? workerContext = null;
+            ID2D1Bitmap1? workerTarget = null;
+            Direct2DResourceCache? resourceCache = null;
+
+            try
+            {
+                workerContext = sharedDevice.CreateDeviceContext(
+                    DeviceContextOptions.EnableMultithreadedOptimizations);
+
+                var bitmapProperties = new BitmapProperties1
+                {
+                    PixelFormat = new PixelFormat(
+                        Format.B8G8R8A8_UNorm,
+                        Vortice.DCommon.AlphaMode.Premultiplied),
+                    DpiX = 96.0f,
+                    DpiY = 96.0f,
+                    BitmapOptions = BitmapOptions.Target
+                };
+
+                workerTarget = workerContext.CreateBitmap(
+                    new SizeI(Math.Max(1, width), Math.Max(1, height)),
+                    nint.Zero,
+                    0,
+                    bitmapProperties);
+
+                resourceCache = new Direct2DResourceCache(
+                    sharedFactory,
+                    dwriteFactory,
+                    workerContext);
+
+                return new SharedDeviceContextSlot(
+                    workerContext,
+                    workerTarget,
+                    resourceCache);
+            }
+            catch
+            {
+                try { resourceCache?.ClearCache(); } catch { }
+                try { if (workerContext is not null) workerContext.Target = null; } catch { }
+                try { workerTarget?.Dispose(); } catch { }
+                try { workerContext?.Dispose(); } catch { }
+                throw;
+            }
+        }
+
+        public void DrawBatch(RenderBatch batch)
+        {
+            lock (_useLock)
+            {
+                ThrowIfDisposed();
+
+                if (Volatile.Read(ref _frameReadyForMain) != 0)
+                    throw new InvalidOperationException("The previous shared-device frame has not been released.");
+
+                var drawBegun = false;
+                var frameReady = false;
+
+                try
+                {
+                    // 目标位图在 Worker 绘制期间绑定；EndDraw 后解除绑定，主 Context 才把它作为输入图像。
+                    _workerD2DContext.Target = _workerTargetBitmap;
+                    _workerD2DContext.BeginDraw();
+                    drawBegun = true;
+
+                    _workerD2DContext.Transform = Matrix3x2.Identity;
+                    _workerD2DContext.Clear(TransparentColor);
+
+                    for (var i = batch.StartIndex; i < batch.EndIndex; i++)
+                    {
+                        batch.Elements[i].Draw(
+                            _resourceCache,
+                            _workerD2DContext,
+                            batch.DrawOffsetX,
+                            batch.DrawOffsetY,
+                            batch.Scale);
+                    }
+
+                    _workerD2DContext.EndDraw();
+                    drawBegun = false;
+                    _workerD2DContext.Target = null;
+
+                    Volatile.Write(ref _frameReadyForMain, 1);
+                    frameReady = true;
+                }
+                finally
+                {
+                    if (drawBegun)
+                    {
+                        try { _workerD2DContext.EndDraw(); } catch { }
+                    }
+
+                    try { _workerD2DContext.Target = null; } catch { }
+
+                    if (!frameReady)
+                        Volatile.Write(ref _frameReadyForMain, 0);
+                }
+            }
+        }
+
+        public void AcquireForMainRead()
+        {
+            ThrowIfDisposed();
+
+            if (Volatile.Read(ref _frameReadyForMain) == 0)
+                throw new InvalidOperationException("The shared-device worker frame is not ready.");
+        }
+
+        public void ReleaseToWorkerWrite()
+        {
+            Volatile.Write(ref _frameReadyForMain, 0);
+        }
+
+        public void ReleaseUnreadFrameToWorker()
+        {
+            Volatile.Write(ref _frameReadyForMain, 0);
+        }
+
+        public void ClearResourceCache()
+        {
+            lock (_useLock)
+            {
+                ThrowIfDisposed();
+                _resourceCache.ClearCache();
+            }
+        }
+
+        public void Dispose()
+        {
+            lock (_useLock)
+            {
+                if (_disposed)
+                    return;
+
+                _disposed = true;
+                Volatile.Write(ref _frameReadyForMain, 0);
+
+                try { _resourceCache.ClearCache(); } catch { }
+                try { _workerD2DContext.Target = null; } catch { }
+                _workerTargetBitmap.Dispose();
+                _workerD2DContext.Dispose();
+            }
+        }
+
+        private void ThrowIfDisposed()
+        {
+            if (_disposed)
+                throw new ObjectDisposedException(nameof(SharedDeviceContextSlot));
+        }
+    }
 }
 
 /// <summary>
-/// 主 Device 已经获得读权限的 Worker Slot 集合。
-/// 必须在主 Context.EndDraw() 之后释放，否则 DrawImage 还没真正执行就可能被 Worker 下一帧覆盖。
+/// 主 Context 已经提交合成的 Worker Slot 集合。
+/// 必须在主 Context.EndDraw() 之后释放，避免下一帧 Worker 提前覆盖离屏位图。
 /// </summary>
 internal sealed class MultiDeviceFrameLease : IDisposable
 {
-    private readonly MultiDeviceRenderer.ThreadDeviceSlot[] _slots;
+    private readonly MultiDeviceRenderer.IRenderSlot[] _slots;
     private int _count;
     private bool _disposed;
 
     public MultiDeviceFrameLease(int capacity)
     {
-        _slots = new MultiDeviceRenderer.ThreadDeviceSlot[Math.Max(0, capacity)];
+        _slots = new MultiDeviceRenderer.IRenderSlot[Math.Max(0, capacity)];
     }
 
-    public void Add(MultiDeviceRenderer.ThreadDeviceSlot slot)
+    public void Add(MultiDeviceRenderer.IRenderSlot slot)
     {
         if (_disposed)
             throw new ObjectDisposedException(nameof(MultiDeviceFrameLease));
@@ -1030,7 +1285,7 @@ internal sealed class MultiDeviceFrameLease : IDisposable
         {
             try
             {
-                // Key 0：归还给子线程，下一帧继续写。
+                // 归还给 Worker，下一帧才允许继续写入离屏目标。
                 _slots[i].ReleaseToWorkerWrite();
             }
             catch

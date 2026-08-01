@@ -45,6 +45,14 @@
                         </Grid>
                         <CheckBox Margin="20 10 0 0" Content="D2D_EnableMultiThread"
                                   IsChecked="{Binding Direct2DEnableMultiThread}"/>
+                        <TextBlock Margin="20 5 0 0"
+                                   Text="D2D_DeviceMode" />
+                        <ComboBox Margin="20 0 0 5"
+                                  ItemsSource="{Binding Direct2DDeviceModes}"
+                                  SelectedItem="{Binding Direct2DDeviceMode}"
+                                  IsEnabled="{Binding Direct2DEnableMultiThread}"/>
+                        <TextBlock Margin="20 5 0 0"
+                                   Text="D2D_PartitionMode" />
                         <ComboBox Margin="20 5 0 5"
                                   ItemsSource="{Binding Direct2DPartitionModes}"
                                   SelectedItem="{Binding Direct2DPartitionMode}"/>

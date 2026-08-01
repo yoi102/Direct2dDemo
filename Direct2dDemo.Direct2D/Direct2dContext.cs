@@ -65,6 +65,7 @@ public class Direct2dContext : IDrawingContext, ICanvasContext
     private int _multiThreadDeviceCount = MultiDeviceRenderer.DefaultDeviceCount;
     private int _multiThreadThreshold = MultiDeviceRenderer.DefaultThreshold;
     private int _multiThreadPartitionMode = (int)MultiThreadPartitionMode.Auto;
+    private int _multiThreadDeviceMode = (int)MultiThreadDeviceMode.MultipleDevices;
 
     /// <summary>
     /// 用于把 Rendered 事件切回创建 Direct2dContext 的线程。
@@ -121,7 +122,8 @@ public class Direct2dContext : IDrawingContext, ICanvasContext
     }
 
     /// <summary>
-    /// 开启后：元素数量超过 MultiThreadThreshold 时，使用多个独立 Device 离屏并行绘制。
+    /// 开启后：元素数量超过 MultiThreadThreshold 时，按 MultiThreadDeviceMode
+    /// 选择多个独立 Device 或单 Device 多 Context 离屏并行绘制。
     /// </summary>
     public bool EnableMultiThread
     {
@@ -183,6 +185,26 @@ public class Direct2dContext : IDrawingContext, ICanvasContext
             if (Interlocked.Exchange(ref _multiThreadPartitionMode, newValue) == newValue)
                 return;
                
+            QueueMultiThreadSettingsUpdate();
+        }
+    }
+
+    /// <summary>
+    /// 并行 Worker 使用多个独立 Device，或共享一个 Device 并各自持有 Context。
+    /// 切换模式时会在渲染线程安全地重建 Worker 资源池。
+    /// </summary>
+    public MultiThreadDeviceMode MultiThreadDeviceMode
+    {
+        get => (MultiThreadDeviceMode)Volatile.Read(ref _multiThreadDeviceMode);
+        set
+        {
+            if (!Enum.IsDefined(value))
+                throw new ArgumentOutOfRangeException(nameof(value));
+
+            var newValue = (int)value;
+            if (Interlocked.Exchange(ref _multiThreadDeviceMode, newValue) == newValue)
+                return;
+
             QueueMultiThreadSettingsUpdate();
         }
     }
@@ -425,6 +447,8 @@ public class Direct2dContext : IDrawingContext, ICanvasContext
             _multiDeviceRenderer.Threshold = Volatile.Read(ref _multiThreadThreshold);
             _multiDeviceRenderer.PartitionMode =
                 (MultiThreadPartitionMode)Volatile.Read(ref _multiThreadPartitionMode);
+            _multiDeviceRenderer.DeviceMode =
+                (MultiThreadDeviceMode)Volatile.Read(ref _multiThreadDeviceMode);
             _multiDeviceRenderer.Enabled = Volatile.Read(ref _multiThreadEnabled) != 0;
         });
 

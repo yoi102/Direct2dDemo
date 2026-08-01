@@ -98,6 +98,21 @@ public partial class MainWindowViewModel : ObservableObject, IDisposable
     public IReadOnlyList<MultiThreadPartitionMode> Direct2DPartitionModes { get; } =
         Enum.GetValues<MultiThreadPartitionMode>();
 
+    public IReadOnlyList<MultiThreadDeviceMode> Direct2DDeviceModes { get; } =
+        Enum.GetValues<MultiThreadDeviceMode>();
+
+    private MultiThreadDeviceMode _direct2DDeviceMode = MultiThreadDeviceMode.MultipleDevices;
+
+    public MultiThreadDeviceMode Direct2DDeviceMode
+    {
+        get => _direct2DDeviceMode;
+        set
+        {
+            if (SetProperty(ref _direct2DDeviceMode, value))
+                Direct2dContext.MultiThreadDeviceMode = value;
+        }
+    }
+
     private MultiThreadPartitionMode _direct2DPartitionMode = MultiThreadPartitionMode.Auto;
 
     public MultiThreadPartitionMode Direct2DPartitionMode
